@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.xenoasis.memoryofwater"
+    android:versionCode="1"
+    android:versionName="1.0.0">
+
+    <application
+        android:label="XENOASIS"
+        android:icon="@mipmap/app_icon"
+        android:allowBackup="false">
+
+        <activity
+            android:name="com.unity3d.player.UnityPlayerActivity"
+            android:theme="@style/UnityThemeSelector"
+            android:screenOrientation="landscape"
+            android:launchMode="singleTask"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+            android:hardwareAccelerated="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="com.picovr.intent.category.VR" />
+            </intent-filter>
+
+            <!-- PICO VR App Declaration -->
+            <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+            <meta-data android:name="pvr.app.type" android:value="vr" />
+            <meta-data android:name="pvr.display.frequency" android:value="90" />
+            <meta-data android:name="handtracking" android:value="1" />
+            <meta-data android:name="com.picovr.support.mr" android:value="true" />
+        </activity>
+
+        <!-- PICO XR Standalone Metadata -->
+        <meta-data android:name="unity.splash-mode" android:value="0" />
+        <meta-data android:name="unity.splash-enable" android:value="false" />
+    </application>
+
+    <!-- PICO 4 Ultra Bare-Hand Tracking & Passthrough Permissions -->
+    <uses-permission android:name="com.picovr.permission.HAND_TRACKING" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <uses-feature android:name="android.hardware.vr.headtracking" android:required="true" android:version="1" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+</manifest>
