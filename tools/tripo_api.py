@@ -28,8 +28,19 @@ ASSET_PROMPTS = {
     "floor_tile": "A single hexagonal floor tile made of polished black obsidian glass with faint glowing cyan circuit-like veins beneath the surface, seamless tileable, game asset"
 }
 
+def load_env():
+    env_file = Path(".env")
+    if env_file.exists():
+        with open(env_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, val = line.split("=", 1)
+                    os.environ.setdefault(key.strip(), val.strip())
+
 class TripoClient:
     def __init__(self, api_key: str = None, dry_run: bool = False):
+        load_env()
         self.api_key = api_key or os.getenv("TRIPO_API_KEY", "")
         self.dry_run = dry_run
         self.headers = {

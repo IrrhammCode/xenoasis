@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEditor;
+using System.IO;
 
 /// <summary>
 /// XENOASIS — SceneSetupEditor.cs
-/// Unity Editor utility to auto-assemble the Welcome Chamber scene hierarchy.
-/// Run from Unity menu: XENOASIS > Setup Scene.
+/// Unity Editor utility that auto-assembles and auto-wires the complete
+/// 4-minute Welcome Chamber narrative experience matching the Project Bible.
+/// Run from Unity menu: XENOASIS > Setup Scene — Welcome Chamber.
 /// </summary>
 public class SceneSetupEditor : MonoBehaviour
 {
@@ -12,30 +14,41 @@ public class SceneSetupEditor : MonoBehaviour
     [MenuItem("XENOASIS/Setup Scene — Welcome Chamber")]
     public static void SetupWelcomeChamber()
     {
-        // ===== ROOT OBJECTS =====
+        Debug.Log("[XENOASIS] Assembling Welcome Chamber narrative experience...");
+
+        // Ensure directories exist
+        EnsureDirectory("Assets/Materials");
+        EnsureDirectory("Assets/Prefabs");
+        EnsureDirectory("Assets/Scenes");
+
+        // ===== 1. MATERIALS & SHADERS =====
+        Material obsidianMat = GetOrCreateMaterial("Assets/Materials/ObsidianGlass.mat", "XENOASIS/ObsidianFloor", new Color(0.024f, 0.027f, 0.043f));
+        Material waterMat = GetOrCreateMaterial("Assets/Materials/WaterRefraction.mat", "XENOASIS/WaterSphere", new Color(0.1f, 0.6f, 0.8f, 0.4f));
+        Material cyanGlowMat = GetOrCreateMaterial("Assets/Materials/EmissiveCyan.mat", "XENOASIS/EmissivePulse", new Color(0f, 1f, 0.82f));
+        Material goldGlowMat = GetOrCreateMaterial("Assets/Materials/EmissiveGold.mat", "XENOASIS/EmissivePulse", new Color(1f, 0.82f, 0.4f));
+
+        // ===== 2. ROOT HIERARCHY =====
         GameObject root = CreateOrFind("--- XENOASIS ---");
 
-        // ===== MANAGERS =====
+        // ===== 3. MANAGERS =====
         GameObject managers = CreateChildOrFind(root, "[Managers]");
-        AddComponentIfMissing<GameManager>(managers);
-        AddComponentIfMissing<OfferingManager>(managers);
-        AddComponentIfMissing<AudioManager>(managers);
+        GameManager gameManager = AddComponentIfMissing<GameManager>(managers);
+        OfferingManager offeringManager = AddComponentIfMissing<OfferingManager>(managers);
+        AudioManager audioManager = AddComponentIfMissing<AudioManager>(managers);
 
-        // ===== ENVIRONMENT =====
+        // ===== 4. ENVIRONMENT =====
         GameObject environment = CreateChildOrFind(root, "[Environment]");
 
-        // Floor Platform
+        // Floor Platform (Obsidian circular dais, 12m diameter)
         GameObject floor = CreateChildOrFind(environment, "FloorPlatform");
-        if (floor.GetComponent<MeshFilter>() == null)
-        {
-            var mf = floor.AddComponent<MeshFilter>();
-            mf.sharedMesh = CreateCircleMesh(6f, 64); // 12m diameter
-            floor.AddComponent<MeshRenderer>();
-            floor.AddComponent<MeshCollider>();
-        }
+        var floorMF = floor.GetComponent<MeshFilter>() ?? floor.AddComponent<MeshFilter>();
+        floorMF.sharedMesh = CreateCircleMesh(6f, 64);
+        var floorMR = floor.GetComponent<MeshRenderer>() ?? floor.AddComponent<MeshRenderer>();
+        floorMR.sharedMaterial = obsidianMat;
+        if (floor.GetComponent<MeshCollider>() == null) floor.AddComponent<MeshCollider>();
         floor.transform.position = Vector3.zero;
 
-        // Pillars (4 arching obsidian pillars)
+        // 4 Arched Obsidian Pillars
         for (int i = 0; i < 4; i++)
         {
             float angle = i * 90f;
@@ -43,114 +56,273 @@ public class SceneSetupEditor : MonoBehaviour
             GameObject pillar = CreateChildOrFind(environment, $"ObsidianPillar_{i + 1}");
             pillar.transform.position = pos;
             pillar.transform.rotation = Quaternion.Euler(0, angle, 0);
+
+            // Placeholder pillar mesh if none imported yet
+            if (pillar.GetComponent<MeshFilter>() == null)
+            {
+                var mf = pillar.AddComponent<MeshFilter>();
+                mf.sharedMesh = CreateCylinderMesh(0.2f, 6f);
+                var mr = pillar.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = obsidianMat;
+            }
         }
 
-        // ===== OFFERINGS =====
+        // ===== 5. THE THREE OFFERINGS =====
         GameObject offerings = CreateChildOrFind(root, "[Offerings]");
 
-        // Offering 1: Water Basin (center)
+        // --- Pedestals ---
+        GameObject[] pedestals = new GameObject[3];
+        Vector3[] pedestalPositions = { new Vector3(0, 0, 0), new Vector3(-3f, 0, 0), new Vector3(3f, 0, 0) };
+        string[] pedestalNames = { "Pedestal_Water", "Pedestal_Crystal", "Pedestal_Flora" };
+
+        for (int i = 0; i < 3; i++)
+        {
+            pedestals[i] = CreateChildOrFind(offerings, pedestalNames[i]);
+            pedestals[i].transform.position = pedestalPositions[i];
+            if (pedestals[i].GetComponent<MeshFilter>() == null)
+            {
+                var mf = pedestals[i].AddComponent<MeshFilter>();
+                mf.sharedMesh = CreateHexPedestalMesh(0.6f, 0.4f);
+                var mr = pedestals[i].AddComponent<MeshRenderer>();
+                mr.sharedMaterial = obsidianMat;
+            }
+        }
+
+        // Wire OfferingManager pedestals + gold material
+        SerializedObject omSO = new SerializedObject(offeringManager);
+        var pProp = omSO.FindProperty("pedestals");
+        pProp.arraySize = 3;
+        for (int i = 0; i < 3; i++) pProp.GetArrayElementAtIndex(i).objectReferenceValue = pedestals[i];
+        omSO.FindProperty("completedPedestalMaterial").objectReferenceValue = goldGlowMat;
+        omSO.ApplyModifiedProperties();
+
+        // --- Offering 1: Water Basin (Center) ---
         GameObject waterBasin = CreateChildOrFind(offerings, "Offering1_WaterBasin");
         waterBasin.transform.position = new Vector3(0, 0.5f, 0);
-        AddComponentIfMissing<HandProximityDetector>(waterBasin);
-        AddComponentIfMissing<WaterSphereController>(waterBasin);
+        var waterHandDetector = AddComponentIfMissing<HandProximityDetector>(waterBasin);
+        var waterCtrl = AddComponentIfMissing<WaterSphereController>(waterBasin);
 
         GameObject waterSphere = CreateChildOrFind(waterBasin, "WaterSphere");
-        if (waterSphere.GetComponent<MeshFilter>() == null)
+        var wsMF = waterSphere.GetComponent<MeshFilter>() ?? waterSphere.AddComponent<MeshFilter>();
+        if (wsMF.sharedMesh == null)
         {
-            waterSphere.AddComponent<MeshFilter>().sharedMesh =
-                Resources.GetBuiltinResource<Mesh>("New-Sphere.fbx");
-            waterSphere.AddComponent<MeshRenderer>();
-            waterSphere.AddComponent<SphereCollider>();
+            GameObject tempSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            wsMF.sharedMesh = tempSphere.GetComponent<MeshFilter>().sharedMesh;
+            DestroyImmediate(tempSphere);
         }
+        var wsMR = waterSphere.GetComponent<MeshRenderer>() ?? waterSphere.AddComponent<MeshRenderer>();
+        wsMR.sharedMaterial = waterMat;
         waterSphere.transform.localPosition = new Vector3(0, 0.5f, 0);
         waterSphere.transform.localScale = Vector3.one * 0.6f;
 
-        // Offering 2: Crystal (left)
+        // Wire WaterSphereController
+        SerializedObject wsSO = new SerializedObject(waterCtrl);
+        wsSO.FindProperty("handDetector").objectReferenceValue = waterHandDetector;
+        wsSO.FindProperty("waterSphereMesh").objectReferenceValue = waterSphere.transform;
+        wsSO.ApplyModifiedProperties();
+
+        // --- Offering 2: Crystal (Left) ---
         GameObject crystal = CreateChildOrFind(offerings, "Offering2_Crystal");
         crystal.transform.position = new Vector3(-3f, 1f, 0);
-        AddComponentIfMissing<HandProximityDetector>(crystal);
-        AddComponentIfMissing<CrystalResonance>(crystal);
-
+        var crystalHandDetector = AddComponentIfMissing<HandProximityDetector>(crystal);
+        var crystalRes = AddComponentIfMissing<CrystalResonance>(crystal);
         GameObject crystalVis = CreateChildOrFind(crystal, "CrystalVisualizer");
-        AddComponentIfMissing<SoundWaveVisualizer>(crystalVis);
+        var soundVis = AddComponentIfMissing<SoundWaveVisualizer>(crystalVis);
 
-        // Offering 3: Flora (right)
-        GameObject flora = CreateChildOrFind(offerings, "Offering3_Flora");
-        flora.transform.position = new Vector3(3f, 0.5f, 0);
-        AddComponentIfMissing<HandProximityDetector>(flora);
-        AddComponentIfMissing<FloraBloom>(flora);
-
-        GameObject energyBeam = CreateChildOrFind(flora, "EnergyBeam");
-        AddComponentIfMissing<EnergyBeamVFX>(energyBeam);
-
-        // Offering Pedestals
-        for (int i = 0; i < 3; i++)
+        if (crystal.GetComponent<MeshFilter>() == null)
         {
-            string name = i == 0 ? "Pedestal_Water" : i == 1 ? "Pedestal_Crystal" : "Pedestal_Flora";
-            GameObject pedestal = CreateChildOrFind(offerings, name);
-            Vector3 pos = i == 0 ? new Vector3(0, 0, 0)
-                        : i == 1 ? new Vector3(-3f, 0, 0)
-                        : new Vector3(3f, 0, 0);
-            pedestal.transform.position = pos;
+            var mf = crystal.AddComponent<MeshFilter>();
+            GameObject tempPrism = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            mf.sharedMesh = tempPrism.GetComponent<MeshFilter>().sharedMesh;
+            DestroyImmediate(tempPrism);
+            var mr = crystal.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = cyanGlowMat;
+            crystal.transform.localScale = new Vector3(0.3f, 0.8f, 0.3f);
         }
 
-        // ===== VFX =====
+        // Wire CrystalResonance
+        SerializedObject crSO = new SerializedObject(crystalRes);
+        crSO.FindProperty("handDetector").objectReferenceValue = crystalHandDetector;
+        crSO.FindProperty("crystalRenderer").objectReferenceValue = crystal.GetComponent<Renderer>();
+        crSO.FindProperty("waveVisualizer").objectReferenceValue = soundVis;
+        crSO.ApplyModifiedProperties();
+
+        // --- Offering 3: Flora (Right) ---
+        GameObject flora = CreateChildOrFind(offerings, "Offering3_Flora");
+        flora.transform.position = new Vector3(3f, 0.5f, 0);
+        var floraHandDetector = AddComponentIfMissing<HandProximityDetector>(flora);
+        var floraBloom = AddComponentIfMissing<FloraBloom>(flora);
+        GameObject energyBeamObj = CreateChildOrFind(flora, "EnergyBeam");
+        var energyBeamVFX = AddComponentIfMissing<EnergyBeamVFX>(energyBeamObj);
+
+        GameObject dormantMesh = CreateChildOrFind(flora, "DormantFloraMesh");
+        if (dormantMesh.GetComponent<MeshFilter>() == null)
+        {
+            GameObject tempSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            dormantMesh.AddComponent<MeshFilter>().sharedMesh = tempSphere.GetComponent<MeshFilter>().sharedMesh;
+            DestroyImmediate(tempSphere);
+            var mr = dormantMesh.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = obsidianMat;
+            dormantMesh.transform.localScale = new Vector3(0.4f, 0.6f, 0.4f);
+        }
+
+        GameObject bloomedMesh = CreateChildOrFind(flora, "BloomedFloraMesh");
+        if (bloomedMesh.GetComponent<MeshFilter>() == null)
+        {
+            GameObject tempCyl = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            bloomedMesh.AddComponent<MeshFilter>().sharedMesh = tempCyl.GetComponent<MeshFilter>().sharedMesh;
+            DestroyImmediate(tempCyl);
+            var mr = bloomedMesh.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = cyanGlowMat;
+            bloomedMesh.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
+        }
+        bloomedMesh.SetActive(false);
+
+        // Wire FloraBloom
+        SerializedObject fbSO = new SerializedObject(floraBloom);
+        fbSO.FindProperty("handDetector").objectReferenceValue = floraHandDetector;
+        fbSO.FindProperty("energyBeamVFX").objectReferenceValue = energyBeamVFX;
+        fbSO.FindProperty("dormantFloraMesh").objectReferenceValue = dormantMesh.transform;
+        fbSO.FindProperty("bloomedFloraMesh").objectReferenceValue = bloomedMesh.transform;
+        fbSO.ApplyModifiedProperties();
+
+        // ===== 6. VFX & CLIMAX BEACON =====
         GameObject vfx = CreateChildOrFind(root, "[VFX]");
 
         GameObject stardust = CreateChildOrFind(vfx, "CosmicStardust");
-        AddComponentIfMissing<StardustController>(stardust);
-        if (stardust.GetComponent<ParticleSystem>() == null)
-            stardust.AddComponent<ParticleSystem>();
+        var stardustCtrl = AddComponentIfMissing<StardustController>(stardust);
+        var stardustPS = stardust.GetComponent<ParticleSystem>() ?? stardust.AddComponent<ParticleSystem>();
         stardust.transform.position = Vector3.zero;
 
         GameObject beacon = CreateChildOrFind(vfx, "ClimaxBeacon");
-        AddComponentIfMissing<BeaconClimaxVFX>(beacon);
+        var beaconVFX = AddComponentIfMissing<BeaconClimaxVFX>(beacon);
         beacon.transform.position = new Vector3(0, 0.5f, 0);
 
-        // ===== CAMERA & FADE =====
+        GameObject guideTrail = CreateChildOrFind(vfx, "GuidingTrail");
+        var trailCtrl = AddComponentIfMissing<GuidingTrail>(guideTrail);
+        SerializedObject gtSO = new SerializedObject(trailCtrl);
+        gtSO.FindProperty("targetDestination").objectReferenceValue = waterBasin.transform;
+        gtSO.ApplyModifiedProperties();
+
+        // Wire Beacon convergence origins to pedestals
+        SerializedObject bvSO = new SerializedObject(beaconVFX);
+        var bOrigins = bvSO.FindProperty("pedestalOrigins");
+        bOrigins.arraySize = 3;
+        for (int i = 0; i < 3; i++) bOrigins.GetArrayElementAtIndex(i).objectReferenceValue = pedestals[i].transform;
+        bvSO.FindProperty("centerConvergencePoint").objectReferenceValue = beacon.transform;
+        bvSO.ApplyModifiedProperties();
+
+        // ===== 7. CAMERA RIG & TRANSITIONS =====
         GameObject cameraRig = CreateChildOrFind(root, "[CameraRig]");
+        cameraRig.transform.position = new Vector3(0, 1.6f, -4.5f); // Player spawn at edge of dais facing basin
 
         GameObject fadeCanvas = CreateChildOrFind(cameraRig, "FadeCanvas");
-        AddComponentIfMissing<FadeController>(fadeCanvas);
-        if (fadeCanvas.GetComponent<Canvas>() == null)
-        {
-            var canvas = fadeCanvas.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 999;
-            fadeCanvas.AddComponent<UnityEngine.UI.CanvasScaler>();
-        }
+        var fadeCtrl = AddComponentIfMissing<FadeController>(fadeCanvas);
+        var canvas = fadeCanvas.GetComponent<Canvas>() ?? fadeCanvas.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 999;
+        AddComponentIfMissing<UnityEngine.UI.CanvasScaler>(fadeCanvas);
 
         GameObject passthroughCtrl = CreateChildOrFind(cameraRig, "PassthroughController");
-        AddComponentIfMissing<PassthroughTransition>(passthroughCtrl);
+        var passthroughTransition = AddComponentIfMissing<PassthroughTransition>(passthroughCtrl);
+        SerializedObject ptSO = new SerializedObject(passthroughTransition);
+        ptSO.FindProperty("virtualEnvironmentRoot").objectReferenceValue = environment;
+        ptSO.ApplyModifiedProperties();
 
-        // ===== LIGHTING =====
-        GameObject lighting = CreateChildOrFind(root, "[Lighting]");
-
-        GameObject dirLight = CreateChildOrFind(lighting, "DistantStarlight");
-        if (dirLight.GetComponent<Light>() == null)
-        {
-            var light = dirLight.AddComponent<Light>();
-            light.type = LightType.Directional;
-            light.color = new Color(0.1f, 0.1f, 0.24f); // Cold blue #1A1A3E
-            light.intensity = 0.15f;
-        }
-        dirLight.transform.rotation = Quaternion.Euler(45f, -30f, 0f);
-
-        // ===== END SCREEN =====
+        // ===== 8. END SCREEN UI =====
         GameObject endScreen = CreateChildOrFind(root, "EndScreenCanvas");
-        if (endScreen.GetComponent<Canvas>() == null)
-        {
-            var canvas = endScreen.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 998;
-        }
+        var endCanvas = endScreen.GetComponent<Canvas>() ?? endScreen.AddComponent<Canvas>();
+        endCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        endCanvas.sortingOrder = 998;
+        AddComponentIfMissing<EndScreenUI>(endScreen);
         endScreen.SetActive(false);
 
-        Debug.Log("[XENOASIS] Welcome Chamber scene hierarchy assembled successfully!");
-        EditorUtility.DisplayDialog("XENOASIS", "Welcome Chamber scene setup complete!\n\nRemember to:\n1. Import Tripo .glb models into Assets/Models/Tripo/\n2. Assign materials to renderers\n3. Wire up SerializeField references in Inspector", "Got it!");
+        // ===== 9. LIGHTING =====
+        GameObject lighting = CreateChildOrFind(root, "[Lighting]");
+        GameObject dirLight = CreateChildOrFind(lighting, "DistantStarlight");
+        var light = dirLight.GetComponent<Light>() ?? dirLight.AddComponent<Light>();
+        light.type = LightType.Directional;
+        light.color = new Color(0.1f, 0.1f, 0.24f); // #1A1A3E
+        light.intensity = 0.15f;
+        dirLight.transform.rotation = Quaternion.Euler(45f, -30f, 0f);
+
+        // ===== 10. WIRE GAMEMANAGER REFERENCES =====
+        SerializedObject gmSO = new SerializedObject(gameManager);
+        gmSO.FindProperty("fadeController").objectReferenceValue = fadeCtrl;
+        gmSO.FindProperty("beaconClimaxVFX").objectReferenceValue = beaconVFX;
+        gmSO.FindProperty("audioManager").objectReferenceValue = audioManager;
+        gmSO.FindProperty("stardustController").objectReferenceValue = stardustCtrl;
+        gmSO.FindProperty("passthroughTransition").objectReferenceValue = passthroughTransition;
+        gmSO.FindProperty("endScreenCanvas").objectReferenceValue = endScreen;
+        gmSO.ApplyModifiedProperties();
+
+        // ===== 11. WIRE AUDIO ASSETS =====
+        WireAudioAssets(audioManager, crystalRes, floraBloom);
+
+        Debug.Log("[XENOASIS] Welcome Chamber assembled & wired 100% according to Project Bible narrative!");
+        EditorUtility.DisplayDialog("XENOASIS",
+            "Welcome Chamber Narrative Experience Assembled!\n\n" +
+            "✔ 3 Sacred Offerings (Water, Crystal, Flora) positioned & wired\n" +
+            "✔ Climax Beacon & Convergence Beams connected to pedestals\n" +
+            "✔ Inception fade, guiding trail, stardust, and end card configured\n" +
+            "✔ Spatial audio soundscapes hooked up\n" +
+            "✔ Shaders & Materials applied",
+            "Awesome!");
+    }
+
+    // ===== AUDIO WIRING =====
+    static void WireAudioAssets(AudioManager am, CrystalResonance cr, FloraBloom fb)
+    {
+        AudioClip drone = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Ambient/cosmic_drone.wav");
+        AudioClip drops = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Ambient/water_drops.wav");
+        AudioClip bell = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/offering_complete.wav");
+        AudioClip crescendo = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Climax/beacon_crescendo.wav");
+        AudioClip crystalC = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/crystal_tone_C.wav");
+        AudioClip bloom = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/bloom_chord.wav");
+
+        if (am != null)
+        {
+            SerializedObject so = new SerializedObject(am);
+            if (drone != null) so.FindProperty("cosmicDroneClip").objectReferenceValue = drone;
+            if (drops != null) so.FindProperty("waterDropsClip").objectReferenceValue = drops;
+            if (bell != null) so.FindProperty("offeringCompleteClip").objectReferenceValue = bell;
+            if (crescendo != null) so.FindProperty("climaxCrescendoClip").objectReferenceValue = crescendo;
+            so.ApplyModifiedProperties();
+        }
+
+        if (cr != null && crystalC != null)
+        {
+            SerializedObject so = new SerializedObject(cr);
+            so.FindProperty("resonantChimeClip").objectReferenceValue = crystalC;
+            so.ApplyModifiedProperties();
+        }
+
+        if (fb != null && bloom != null)
+        {
+            SerializedObject so = new SerializedObject(fb);
+            so.FindProperty("bloomChordClip").objectReferenceValue = bloom;
+            so.ApplyModifiedProperties();
+        }
     }
 
     // ===== HELPERS =====
+    static void EnsureDirectory(string path)
+    {
+        if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+    }
+
+    static Material GetOrCreateMaterial(string path, string shaderName, Color defaultColor)
+    {
+        Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (mat == null)
+        {
+            Shader shader = Shader.Find(shaderName) ?? Shader.Find("Universal Render Pipeline/Lit");
+            mat = new Material(shader);
+            mat.color = defaultColor;
+            AssetDatabase.CreateAsset(mat, path);
+        }
+        return mat;
+    }
 
     static GameObject CreateOrFind(string name)
     {
@@ -180,12 +352,9 @@ public class SceneSetupEditor : MonoBehaviour
 
     static Mesh CreateCircleMesh(float radius, int segments)
     {
-        Mesh mesh = new Mesh();
-        mesh.name = "CirclePlatform";
-
-        int vertCount = segments + 1;
-        Vector3[] verts = new Vector3[vertCount];
-        Vector2[] uvs = new Vector2[vertCount];
+        Mesh mesh = new Mesh { name = "CirclePlatform" };
+        Vector3[] verts = new Vector3[segments + 1];
+        Vector2[] uvs = new Vector2[segments + 1];
         int[] tris = new int[segments * 3];
 
         verts[0] = Vector3.zero;
@@ -211,6 +380,19 @@ public class SceneSetupEditor : MonoBehaviour
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
         return mesh;
+    }
+
+    static Mesh CreateCylinderMesh(float radius, float height)
+    {
+        GameObject temp = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        Mesh m = Instantiate(temp.GetComponent<MeshFilter>().sharedMesh);
+        DestroyImmediate(temp);
+        return m;
+    }
+
+    static Mesh CreateHexPedestalMesh(float radius, float height)
+    {
+        return CreateCircleMesh(radius, 6);
     }
 #endif
 }

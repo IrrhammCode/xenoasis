@@ -9,6 +9,9 @@ import sys
 import argparse
 from pathlib import Path
 
+# Ensure tools directory is in Python path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 # Load .env file if present
 def load_env():
     env_file = Path(".env")

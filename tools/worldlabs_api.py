@@ -23,8 +23,19 @@ DEFAULT_WORLD_PROMPT = (
     "non-euclidean alien architecture, solarpunk cosmic hospitality, hyper-detailed 3D environment."
 )
 
+def load_env():
+    env_file = Path(".env")
+    if env_file.exists():
+        with open(env_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, val = line.split("=", 1)
+                    os.environ.setdefault(key.strip(), val.strip())
+
 class WorldLabsClient:
     def __init__(self, api_key: str = None, dry_run: bool = False):
+        load_env()
         self.api_key = api_key or os.getenv("WORLDLABS_API_KEY", "")
         self.dry_run = dry_run
         self.headers = {
@@ -44,8 +55,12 @@ class WorldLabsClient:
 
         url = f"{BASE_URL}/worlds:generate"
         payload = {
-            "prompt": prompt,
-            "model": model
+            "model": model,
+            "display_name": "XENOASIS Celestial Sanctuary",
+            "world_prompt": {
+                "type": "text",
+                "text_prompt": prompt
+            }
         }
         res = requests.post(url, headers=self.headers, json=payload, timeout=30)
         res.raise_for_status()
@@ -79,18 +94,38 @@ class WorldLabsClient:
 
         raise TimeoutError(f"Operation {operation_id} timed out after {max_wait}s.")
 
-    def export_world(self, world_id: str, export_format: str = "panorama") -> str:
-        """Requests export of the world (e.g. panorama/skybox, mesh, gaussian_splat)."""
+    def get_world(self, world_id: str) -> dict:
+        """Retrieves details of a generated world."""
         if self.dry_run:
-            print(f"[DRY-RUN] POST {BASE_URL}/worlds/{world_id}:export format={export_format}")
-            return f"https://example.com/export_{export_format}.exr"
+            return {"assets": {"imagery": {"pano_url": "https://example.com/dry_run_pano.png"}}}
 
+        url = f"{BASE_URL}/worlds/{world_id}"
+        res = requests.get(url, headers=self.headers, timeout=30)
+        res.raise_for_status()
+        return res.json()
+
+    def export_world(self, world_id: str, export_format: str = "panorama") -> str:
+        """Requests export of the world or retrieves pano_url directly."""
+        if self.dry_run:
+            print(f"[DRY-RUN] Export world {world_id} format={export_format}")
+            return f"https://example.com/export_{export_format}.png"
+
+        # Check if 360 panorama is already available in assets
+        world_data = self.get_world(world_id)
+        if export_format == "panorama":
+            pano = world_data.get("assets", {}).get("imagery", {}).get("pano_url")
+            if pano:
+                return pano
+
+        # Otherwise trigger export
         url = f"{BASE_URL}/worlds/{world_id}:export"
-        payload = {"format": export_format}
+        asset_type = "splats" if export_format == "gaussian_splat" else "mesh"
+        fmt = "ply" if export_format == "gaussian_splat" else "glb"
+        payload = {"asset_type": asset_type, "format": fmt}
         res = requests.post(url, headers=self.headers, json=payload, timeout=30)
         res.raise_for_status()
         data = res.json()
-        return data.get("download_url", "")
+        return data.get("download_url") or data.get("url", "")
 
     def download_file(self, url: str, output_path: Path):
         """Downloads exported environment asset to local path."""
