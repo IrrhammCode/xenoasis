@@ -1,12 +1,16 @@
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using System.IO;
 
 /// <summary>
 /// XENOASIS — SceneSetupEditor.cs
 /// 1-Click Unity Editor utility that auto-assembles and auto-wires the complete
 /// 4-minute Welcome Chamber narrative experience matching the Project Bible,
-/// using the generated Tripo AI 3D assets and World Labs skybox.
+/// using the generated Tripo AI 3D assets, World Labs skybox, URP post-processing,
+/// spatial audio, and lighting.
 /// Run from Unity menu: XENOASIS > Setup Scene — Welcome Chamber.
 /// </summary>
 public class SceneSetupEditor : MonoBehaviour
@@ -36,6 +40,8 @@ public class SceneSetupEditor : MonoBehaviour
             skyMat.SetTexture("_MainTex", panoTex);
             skyMat.SetFloat("_Exposure", 1.2f);
             RenderSettings.skybox = skyMat;
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.04f, 0.04f, 0.09f); // Deep celestial indigo
             Debug.Log("[XENOASIS] World Labs Skybox configured successfully.");
         }
 
@@ -60,7 +66,29 @@ public class SceneSetupEditor : MonoBehaviour
         if (floor.GetComponent<MeshCollider>() == null) floor.AddComponent<MeshCollider>();
         floor.transform.position = Vector3.zero;
 
-        // World Labs Sanctuary Collider (if available)
+        // Tripo Floor Tile Mosaic (hexagonal tiling over dais)
+        GameObject tileRoot = CreateChildOrFind(floor, "TiledMosaic");
+        // Center tile
+        AttachGLBOrPlaceholder(tileRoot, "Assets/Models/Tripo/floor_tile.glb", "Tile_Center",
+            new Vector3(0, 0.01f, 0), Vector3.one * 1.2f, Quaternion.identity);
+        // Inner ring (6 tiles)
+        for (int i = 0; i < 6; i++)
+        {
+            float ang = i * 60f * Mathf.Deg2Rad;
+            Vector3 pos = new Vector3(Mathf.Cos(ang) * 2.1f, 0.01f, Mathf.Sin(ang) * 2.1f);
+            AttachGLBOrPlaceholder(tileRoot, "Assets/Models/Tripo/floor_tile.glb", $"Tile_Ring1_{i + 1}",
+                pos, Vector3.one * 1.2f, Quaternion.Euler(0, i * 60f, 0));
+        }
+        // Outer ring (12 tiles)
+        for (int i = 0; i < 12; i++)
+        {
+            float ang = i * 30f * Mathf.Deg2Rad;
+            Vector3 pos = new Vector3(Mathf.Cos(ang) * 4.2f, 0.01f, Mathf.Sin(ang) * 4.2f);
+            AttachGLBOrPlaceholder(tileRoot, "Assets/Models/Tripo/floor_tile.glb", $"Tile_Ring2_{i + 1}",
+                pos, Vector3.one * 1.2f, Quaternion.Euler(0, i * 30f, 0));
+        }
+
+        // World Labs Sanctuary Collider
         AttachGLBOrPlaceholder(environment, "Assets/Models/WorldLabs/sanctuary_collider.glb", "SanctuaryCollider",
             Vector3.zero, Vector3.one, Quaternion.identity);
 
@@ -86,9 +114,15 @@ public class SceneSetupEditor : MonoBehaviour
             }
         }
 
-        // Overhead Glass Chimes (Tripo AI)
-        AttachGLBOrPlaceholder(environment, "Assets/Models/Tripo/glass_chime.glb", "OverheadGlassChimes",
-            new Vector3(0, 3.5f, 0), Vector3.one * 0.8f, Quaternion.identity);
+        // Overhead Glass Chimes (Tripo AI) - ring of 4 floating chimes
+        GameObject chimesRoot = CreateChildOrFind(environment, "GlassChimesGroup");
+        for (int i = 0; i < 4; i++)
+        {
+            float angle = (i * 90f + 45f) * Mathf.Deg2Rad;
+            Vector3 chimePos = new Vector3(Mathf.Cos(angle) * 3.8f, 3.2f, Mathf.Sin(angle) * 3.8f);
+            AttachGLBOrPlaceholder(chimesRoot, "Assets/Models/Tripo/glass_chime.glb", $"Chime_{i + 1}",
+                chimePos, Vector3.one * 0.7f, Quaternion.Euler(0, i * 45f, 0));
+        }
 
         // ===== 6. THE THREE SACRED OFFERINGS =====
         GameObject offerings = CreateChildOrFind(root, "[Offerings]");
@@ -243,19 +277,26 @@ public class SceneSetupEditor : MonoBehaviour
         // ===== 7. VFX & CLIMAX BEACON =====
         GameObject vfx = CreateChildOrFind(root, "[VFX]");
 
+        // Cosmic Stardust Particles (zero-g ambient cosmos)
         GameObject stardust = CreateChildOrFind(vfx, "CosmicStardust");
         var stardustCtrl = AddComponentIfMissing<StardustController>(stardust);
         var stardustPS = stardust.GetComponent<ParticleSystem>() ?? stardust.AddComponent<ParticleSystem>();
+        ConfigureStardustParticles(stardustPS);
         stardust.transform.position = Vector3.zero;
 
+        // Climax Beacon
         GameObject beacon = CreateChildOrFind(vfx, "ClimaxBeacon");
         var beaconVFX = AddComponentIfMissing<BeaconClimaxVFX>(beacon);
         beacon.transform.position = new Vector3(0, 0.5f, 0);
 
+        // Guiding Floor Trail
         GameObject guideTrail = CreateChildOrFind(vfx, "GuidingTrail");
         var trailCtrl = AddComponentIfMissing<GuidingTrail>(guideTrail);
+        var trailPS = guideTrail.GetComponent<ParticleSystem>() ?? guideTrail.AddComponent<ParticleSystem>();
+        ConfigureTrailParticles(trailPS);
         SerializedObject gtSO = new SerializedObject(trailCtrl);
         gtSO.FindProperty("targetDestination").objectReferenceValue = waterBasin.transform;
+        gtSO.FindProperty("trailParticles").objectReferenceValue = trailPS;
         gtSO.ApplyModifiedProperties();
 
         // Wire Beacon convergence origins to pedestals
@@ -269,6 +310,21 @@ public class SceneSetupEditor : MonoBehaviour
         // ===== 8. CAMERA RIG & TRANSITIONS =====
         GameObject cameraRig = CreateChildOrFind(root, "[CameraRig]");
         cameraRig.transform.position = new Vector3(0, 1.6f, -4.5f); // Player spawn at edge of dais facing basin
+
+        // Setup Main Camera if not present
+        Camera mainCam = Camera.main;
+        if (mainCam == null)
+        {
+            GameObject camObj = CreateChildOrFind(cameraRig, "MainCamera");
+            mainCam = camObj.AddComponent<Camera>();
+            camObj.tag = "MainCamera";
+            camObj.AddComponent<AudioListener>();
+        }
+        else
+        {
+            mainCam.transform.SetParent(cameraRig.transform);
+            mainCam.transform.localPosition = new Vector3(0, 0, 0);
+        }
 
         GameObject fadeCanvas = CreateChildOrFind(cameraRig, "FadeCanvas");
         var fadeCtrl = AddComponentIfMissing<FadeController>(fadeCanvas);
@@ -335,16 +391,60 @@ public class SceneSetupEditor : MonoBehaviour
 
         endScreen.SetActive(false);
 
-        // ===== 10. LIGHTING =====
+        // ===== 10. LIGHTING & BIOLUMINESCENCE =====
         GameObject lighting = CreateChildOrFind(root, "[Lighting]");
+
+        // Distant Starlight (Cold blue cosmic rim)
         GameObject dirLight = CreateChildOrFind(lighting, "DistantStarlight");
         var light = dirLight.GetComponent<Light>() ?? dirLight.AddComponent<Light>();
         light.type = LightType.Directional;
-        light.color = new Color(0.1f, 0.1f, 0.24f); // #1A1A3E
-        light.intensity = 0.15f;
-        dirLight.transform.rotation = Quaternion.Euler(45f, -30f, 0f);
+        light.color = new Color(0.12f, 0.14f, 0.28f); // #1E2447
+        light.intensity = 0.2f;
+        dirLight.transform.rotation = Quaternion.Euler(50f, -35f, 0f);
 
-        // ===== 11. WIRE GAMEMANAGER REFERENCES =====
+        // Altar Point Light: Water Basin (Cyan glow)
+        GameObject waterLightObj = CreateChildOrFind(lighting, "WaterBasinPointLight");
+        var waterL = waterLightObj.GetComponent<Light>() ?? waterLightObj.AddComponent<Light>();
+        waterL.type = LightType.Point;
+        waterL.color = new Color(0f, 0.9f, 1f); // Cyan #00E5FF
+        waterL.intensity = 1.8f;
+        waterL.range = 4.5f;
+        waterLightObj.transform.position = new Vector3(0, 0.8f, 0);
+
+        // Altar Point Light: Resonant Crystal (Electric blue)
+        GameObject crystalLightObj = CreateChildOrFind(lighting, "CrystalPointLight");
+        var crystalL = crystalLightObj.GetComponent<Light>() ?? crystalLightObj.AddComponent<Light>();
+        crystalL.type = LightType.Point;
+        crystalL.color = new Color(0f, 0.7f, 1f); // #00B0FF
+        crystalL.intensity = 1.6f;
+        crystalL.range = 4.0f;
+        crystalLightObj.transform.position = new Vector3(-3f, 1.2f, 0);
+
+        // Altar Point Light: Flora Bloom (Amber Solar)
+        GameObject floraLightObj = CreateChildOrFind(lighting, "FloraPointLight");
+        var floraL = floraLightObj.GetComponent<Light>() ?? floraLightObj.AddComponent<Light>();
+        floraL.type = LightType.Point;
+        floraL.color = new Color(1f, 0.83f, 0.31f); // Solar Gold #FFD54F
+        floraL.intensity = 1.4f;
+        floraL.range = 4.0f;
+        floraLightObj.transform.position = new Vector3(3f, 0.8f, 0);
+
+        // Reflection Probe (Reflecting skybox & glowing pillars onto obsidian floor)
+        GameObject probeObj = CreateChildOrFind(lighting, "SanctuaryReflectionProbe");
+        var probe = probeObj.GetComponent<ReflectionProbe>() ?? probeObj.AddComponent<ReflectionProbe>();
+        probe.size = new Vector3(16f, 10f, 16f);
+        probe.boxProjection = true;
+        probe.mode = ReflectionProbeMode.Realtime;
+        probe.refreshMode = ReflectionProbeRefreshMode.OnAwake;
+        probeObj.transform.position = new Vector3(0, 1.5f, 0);
+
+        // ===== 11. URP POST-PROCESSING VOLUME =====
+        GameObject ppObj = CreateChildOrFind(root, "[PostProcessing]");
+        var volume = ppObj.GetComponent<Volume>() ?? ppObj.AddComponent<Volume>();
+        volume.isGlobal = true;
+        ConfigurePostProcessingProfile(volume);
+
+        // ===== 12. WIRE GAMEMANAGER REFERENCES =====
         SerializedObject gmSO = new SerializedObject(gameManager);
         gmSO.FindProperty("fadeController").objectReferenceValue = fadeCtrl;
         gmSO.FindProperty("beaconClimaxVFX").objectReferenceValue = beaconVFX;
@@ -354,19 +454,127 @@ public class SceneSetupEditor : MonoBehaviour
         gmSO.FindProperty("endScreenCanvas").objectReferenceValue = endScreen;
         gmSO.ApplyModifiedProperties();
 
-        // ===== 12. WIRE AUDIO ASSETS =====
+        // ===== 13. WIRE AUDIO ASSETS =====
         WireAudioAssets(audioManager, crystalRes, floraBloom);
 
-        Debug.Log("[XENOASIS] Welcome Chamber assembled with Tripo 3D models and World Labs Skybox!");
+        // ===== 14. AUTO-SAVE SCENE FILE & REGISTER IN BUILD SETTINGS =====
+        string scenePath = "Assets/Scenes/WelcomeChamber.unity";
+        EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), scenePath);
+        RegisterSceneInBuild(scenePath);
+
+        Debug.Log("[XENOASIS] Welcome Chamber assembled with Tripo 3D models, World Labs Skybox, and saved to Assets/Scenes/WelcomeChamber.unity!");
         EditorUtility.DisplayDialog("XENOASIS",
-            "Welcome Chamber Narrative Experience Assembled!\n\n" +
-            "✔ World Labs 360 Skybox applied\n" +
-            "✔ 9 Tripo AI 3D Artifacts attached (Basin, Lotus, Crystal, Pillars, Flora, Chimes, Pedestals)\n" +
-            "✔ 3 Sacred Offerings mechanics fully wired\n" +
-            "✔ Climax Beacon & Convergence Beams hooked up\n" +
-            "✔ Spatial audio soundscapes connected\n" +
-            "✔ PICO 4 Ultra Hand Tracking & Passthrough ready",
+            "Welcome Chamber Narrative Experience Assembled & Saved!\n\n" +
+            "✔ World Labs 360 Celestial Skybox applied\n" +
+            "✔ 19 Tiled Floor Hexagons (Tripo floor_tile.glb) arrayed across the dais\n" +
+            "✔ 4 Arched Obsidian Pillars + 4 Overhead Glass Chimes attached\n" +
+            "✔ 3 Sacred Offerings (Basin, Lotus, Crystal, Flora) positioned & wired\n" +
+            "✔ URP Post-Processing Volume (Bloom 2.2 + ACES Tonemapping + Vignette) active\n" +
+            "✔ 4 Bioluminescent Point Lights & Reflection Probe configured\n" +
+            "✔ Spatial Audio Soundscapes connected\n" +
+            "✔ Scene auto-saved to Assets/Scenes/WelcomeChamber.unity",
             "Awesome!");
+    }
+
+    // ===== PARTICLE SYSTEM CONFIGURATORS =====
+    static void ConfigureStardustParticles(ParticleSystem ps)
+    {
+        var main = ps.main;
+        main.maxParticles = 800;
+        main.startLifetime = 15f;
+        main.startSpeed = 0.04f;
+        main.startSize = new ParticleSystem.MinMaxCurve(0.015f, 0.045f);
+        main.startColor = new Color(0f, 1f, 0.85f, 0.7f);
+        main.prewarm = true;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+        var emission = ps.emission;
+        emission.rateOverTime = 35f;
+
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Sphere;
+        shape.radius = 7.5f;
+
+        var noise = ps.noise;
+        noise.enabled = true;
+        noise.strength = 0.15f;
+        noise.frequency = 0.1f;
+    }
+
+    static void ConfigureTrailParticles(ParticleSystem ps)
+    {
+        var main = ps.main;
+        main.maxParticles = 150;
+        main.startLifetime = 4f;
+        main.startSpeed = 0.3f;
+        main.startSize = new ParticleSystem.MinMaxCurve(0.01f, 0.03f);
+        main.startColor = new Color(0f, 1f, 0.82f, 0.5f);
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+        var emission = ps.emission;
+        emission.rateOverTime = 15f;
+
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = new Vector3(0.6f, 0.05f, 3.5f);
+        shape.position = new Vector3(0, 0.02f, -2.5f);
+    }
+
+    // ===== URP POST-PROCESSING CONFIGURATOR =====
+    static void ConfigurePostProcessingProfile(Volume volume)
+    {
+        string profilePath = "Assets/Materials/WelcomeChamber_Profile.asset";
+        VolumeProfile profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(profilePath);
+        if (profile == null)
+        {
+            profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            AssetDatabase.CreateAsset(profile, profilePath);
+        }
+
+        // Bloom
+        Bloom bloom;
+        if (!profile.TryGet(out bloom)) bloom = profile.Add<Bloom>(true);
+        bloom.threshold.Override(0.85f);
+        bloom.intensity.Override(2.2f);
+        bloom.scatter.Override(0.7f);
+        bloom.tint.Override(new Color(0f, 1f, 0.82f)); // Cyan bioluminescent tint
+
+        // Tonemapping
+        Tonemapping tonemapping;
+        if (!profile.TryGet(out tonemapping)) tonemapping = profile.Add<Tonemapping>(true);
+        tonemapping.mode.Override(TonemappingMode.ACES);
+
+        // Vignette
+        Vignette vignette;
+        if (!profile.TryGet(out vignette)) vignette = profile.Add<Vignette>(true);
+        vignette.intensity.Override(0.25f);
+        vignette.smoothness.Override(0.4f);
+
+        // Color Adjustments
+        ColorAdjustments colorAdj;
+        if (!profile.TryGet(out colorAdj)) colorAdj = profile.Add<ColorAdjustments>(true);
+        colorAdj.postExposure.Override(0.15f);
+        colorAdj.contrast.Override(15f);
+        colorAdj.saturation.Override(10f);
+
+        EditorUtility.SetDirty(profile);
+        volume.sharedProfile = profile;
+    }
+
+    // ===== SCENE IN BUILD REGISTRATION =====
+    static void RegisterSceneInBuild(string scenePath)
+    {
+        var scenes = EditorBuildSettings.scenes;
+        for (int i = 0; i < scenes.Length; i++)
+        {
+            if (scenes[i].path == scenePath) return; // already registered
+        }
+
+        var newScenes = new EditorBuildSettingsScene[scenes.Length + 1];
+        System.Array.Copy(scenes, newScenes, scenes.Length);
+        newScenes[newScenes.Length - 1] = new EditorBuildSettingsScene(scenePath, true);
+        EditorBuildSettings.scenes = newScenes;
+        Debug.Log($"[XENOASIS] Scene '{scenePath}' registered in EditorBuildSettings!");
     }
 
     // ===== MODEL ATTACH HELPER =====
