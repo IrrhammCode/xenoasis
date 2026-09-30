@@ -32,17 +32,27 @@ public class SceneSetupEditor : MonoBehaviour
         Material cyanGlowMat = GetOrCreateMaterial("Assets/Materials/EmissiveCyan.mat", "XENOASIS/EmissivePulse", new Color(0f, 1f, 0.82f));
         Material goldGlowMat = GetOrCreateMaterial("Assets/Materials/EmissiveGold.mat", "XENOASIS/EmissivePulse", new Color(1f, 0.82f, 0.4f));
 
-        // ===== 2. SKYBOX (World Labs 360 Celestial Void) =====
-        Texture2D panoTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Skybox/CosmicVoid_Pano.png");
+        // ===== 2. SKYBOX (Celestial Cosmic Void) =====
+        string panoPath = "Assets/Textures/Skybox/CosmicVoid_Pano.png";
+        TextureImporter ti = AssetImporter.GetAtPath(panoPath) as TextureImporter;
+        if (ti != null)
+        {
+            ti.maxTextureSize = 4096;
+            ti.wrapMode = TextureWrapMode.Clamp;
+            ti.textureCompression = TextureImporterCompression.CompressedHQ;
+            ti.SaveAndReimport();
+        }
+
+        Texture2D panoTex = AssetDatabase.LoadAssetAtPath<Texture2D>(panoPath);
         if (panoTex != null)
         {
             Material skyMat = GetOrCreateMaterial("Assets/Materials/CosmicVoid_Skybox.mat", "Skybox/Panoramic", Color.white);
             skyMat.SetTexture("_MainTex", panoTex);
-            skyMat.SetFloat("_Exposure", 1.2f);
+            skyMat.SetFloat("_Exposure", 1.0f);
             RenderSettings.skybox = skyMat;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.04f, 0.04f, 0.09f); // Deep celestial indigo
-            Debug.Log("[XENOASIS] World Labs Skybox configured successfully.");
+            RenderSettings.ambientLight = new Color(0.06f, 0.06f, 0.14f); // Deep celestial indigo
+            Debug.Log("[XENOASIS] Cosmic Void Skybox configured successfully.");
         }
 
         // ===== 3. ROOT HIERARCHY =====
@@ -88,9 +98,9 @@ public class SceneSetupEditor : MonoBehaviour
                 pos, Vector3.one * 1.2f, Quaternion.Euler(0, i * 30f, 0));
         }
 
-        // World Labs Sanctuary Collider
-        AttachGLBOrPlaceholder(environment, "Assets/Models/WorldLabs/sanctuary_collider.glb", "SanctuaryCollider",
-            Vector3.zero, Vector3.one, Quaternion.identity);
+        // Clean up any old blurry SanctuaryCollider grey sphere from WorldLabs
+        Transform oldCollider = environment.transform.Find("SanctuaryCollider");
+        if (oldCollider != null) DestroyImmediate(oldCollider.gameObject);
 
         // 4 Arched Obsidian Pillars (Tripo AI)
         for (int i = 0; i < 4; i++)
