@@ -83,9 +83,16 @@ class TripoClient:
             }
 
         url = f"{BASE_URL}/tasks/{task_id}"
-        res = requests.get(url, headers=self.headers, timeout=30)
-        res.raise_for_status()
-        return res.json()
+        for attempt in range(4):
+            try:
+                res = requests.get(url, headers=self.headers, timeout=60)
+                res.raise_for_status()
+                return res.json()
+            except requests.exceptions.RequestException as e:
+                if attempt == 3:
+                    raise
+                print(f"[!] Network hiccup during poll ({e}). Retrying in 5s...")
+                time.sleep(5)
 
     def poll_until_complete(self, task_id: str, poll_interval: int = 5, max_wait: int = 300) -> str:
         """Polls task and returns downloaded model URL when ready."""
@@ -147,6 +154,9 @@ def main():
     for name, prompt in targets.items():
         print(f"\n>> Processing: {name}")
         out_file = out_dir / f"{name}.glb"
+        if out_file.exists() and out_file.stat().st_size > 1000:
+            print(f"[OK] {out_file} already exists ({out_file.stat().st_size} bytes). Skipping generation.")
+            continue
         try:
             task_res = client.create_text_to_model(prompt)
             task_id = task_res.get("data", {}).get("task_id")
