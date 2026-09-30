@@ -288,7 +288,51 @@ public class SceneSetupEditor : MonoBehaviour
         var endCanvas = endScreen.GetComponent<Canvas>() ?? endScreen.AddComponent<Canvas>();
         endCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
         endCanvas.sortingOrder = 998;
-        AddComponentIfMissing<EndScreenUI>(endScreen);
+        AddComponentIfMissing<UnityEngine.UI.CanvasScaler>(endScreen);
+
+        EndScreenUI endUI = AddComponentIfMissing<EndScreenUI>(endScreen);
+
+        // Child: MessageText ("The gift was received.")
+        GameObject msgObj = CreateChildOrFind(endScreen, "MessageText");
+        var msgTMP = msgObj.GetComponent<TMPro.TextMeshProUGUI>() ?? msgObj.AddComponent<TMPro.TextMeshProUGUI>();
+        msgTMP.text = "The gift was received.";
+        msgTMP.fontSize = 28;
+        msgTMP.alignment = TMPro.TextAlignmentOptions.Center;
+        msgTMP.color = new Color(0.9f, 0.95f, 1f, 0f);
+        RectTransform msgRT = msgObj.GetComponent<RectTransform>();
+        msgRT.anchoredPosition = new Vector2(0, 50f);
+        msgRT.sizeDelta = new Vector2(800, 100);
+
+        // Child: TitleText ("XENOASIS")
+        GameObject titleObj = CreateChildOrFind(endScreen, "TitleText");
+        var titleTMP = titleObj.GetComponent<TMPro.TextMeshProUGUI>() ?? titleObj.AddComponent<TMPro.TextMeshProUGUI>();
+        titleTMP.text = "XENOASIS";
+        titleTMP.fontSize = 54;
+        titleTMP.fontStyle = TMPro.FontStyles.Bold;
+        titleTMP.alignment = TMPro.TextAlignmentOptions.Center;
+        titleTMP.color = new Color(1f, 0.82f, 0.4f, 0f); // Gold #FFD166
+        RectTransform titleRT = titleObj.GetComponent<RectTransform>();
+        titleRT.anchoredPosition = new Vector2(0, -20f);
+        titleRT.sizeDelta = new Vector2(800, 100);
+
+        // Child: CreditsText
+        GameObject credObj = CreateChildOrFind(endScreen, "CreditsText");
+        var credTMP = credObj.GetComponent<TMPro.TextMeshProUGUI>() ?? credObj.AddComponent<TMPro.TextMeshProUGUI>();
+        credTMP.text = "Tripothon S1 · Built with Tripo AI + World Labs + PICO 4 Ultra";
+        credTMP.fontSize = 18;
+        credTMP.alignment = TMPro.TextAlignmentOptions.Center;
+        credTMP.color = new Color(0.7f, 0.7f, 0.7f, 0f);
+        RectTransform credRT = credObj.GetComponent<RectTransform>();
+        credRT.anchoredPosition = new Vector2(0, -90f);
+        credRT.sizeDelta = new Vector2(800, 80);
+
+        // Wire EndScreenUI SerializedObject
+        SerializedObject esSO = new SerializedObject(endUI);
+        esSO.FindProperty("messageText").objectReferenceValue = msgTMP;
+        esSO.FindProperty("titleText").objectReferenceValue = titleTMP;
+        esSO.FindProperty("creditsText").objectReferenceValue = credTMP;
+        esSO.ApplyModifiedProperties();
+
         endScreen.SetActive(false);
 
         // ===== 10. LIGHTING =====

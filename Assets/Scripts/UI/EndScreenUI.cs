@@ -30,6 +30,18 @@ public class EndScreenUI : MonoBehaviour
 
     private void OnEnable()
     {
+        // Auto-find children if not assigned in Inspector
+        if (messageText == null || titleText == null || creditsText == null)
+        {
+            var tmps = GetComponentsInChildren<TextMeshProUGUI>(true);
+            foreach (var t in tmps)
+            {
+                if (messageText == null && t.name.IndexOf("Message", System.StringComparison.OrdinalIgnoreCase) >= 0) messageText = t;
+                else if (titleText == null && t.name.IndexOf("Title", System.StringComparison.OrdinalIgnoreCase) >= 0) titleText = t;
+                else if (creditsText == null && t.name.IndexOf("Credit", System.StringComparison.OrdinalIgnoreCase) >= 0) creditsText = t;
+            }
+        }
+
         // Initialize all text invisible
         SetAlpha(messageText, 0f);
         SetAlpha(titleText, 0f);

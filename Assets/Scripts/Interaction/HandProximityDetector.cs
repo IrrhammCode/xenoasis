@@ -241,23 +241,57 @@ public class HandProximityDetector : MonoBehaviour
         }
 #else
         // ===== MOCK HANDS (Unity Editor Testing) =====
-        // Uses mouse position projected into world space for quick iteration
-        leftTracked = false;
-        leftPalm = Vector3.zero;
-        leftPalmNormal = Vector3.forward;
+        // Enables full narrative testing in Unity Editor via mouse / hotkeys
+        bool simulateBoth = Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.LeftShift) || Input.GetMouseButton(0);
+        leftTracked = simulateBoth;
         rightTracked = true;
-        rightPalmNormal = Camera.main != null ? Camera.main.transform.forward : Vector3.forward;
 
         if (Camera.main != null)
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            rightPalm = ray.origin + ray.direction * 0.5f;
-            rightTracked = true;
+            // Project ray onto a sphere or plane centered on this interactive object
+            Plane plane = new Plane(-Camera.main.transform.forward, objectCenter);
+            if (plane.Raycast(ray, out float enter))
+            {
+                Vector3 hitPoint = ray.GetPoint(enter);
+                // Clamp distance to object for easy interaction testing
+                Vector3 offset = hitPoint - objectCenter;
+                if (offset.magnitude > detectionRadius * 1.5f && !simulateBoth)
+                {
+                    rightPalm = hitPoint;
+                }
+                else
+                {
+                    // Snap closer when mouse is near object or clicking
+                    rightPalm = objectCenter + Vector3.ClampMagnitude(offset, detectionRadius * 0.8f);
+                }
+                rightPalmNormal = (objectCenter - rightPalm).normalized;
+            }
+            else
+            {
+                rightPalm = objectCenter + Vector3.forward * 0.2f;
+                rightPalmNormal = -Vector3.forward;
+            }
+
+            if (leftTracked)
+            {
+                // Mirror left hand on the other side of the object for 2-handed interactions
+                Vector3 diff = rightPalm - objectCenter;
+                leftPalm = objectCenter - diff;
+                leftPalmNormal = (objectCenter - leftPalm).normalized;
+            }
+            else
+            {
+                leftPalm = Vector3.zero;
+                leftPalmNormal = Vector3.forward;
+            }
         }
         else
         {
-            rightPalm = Vector3.zero;
-            rightTracked = false;
+            rightPalm = objectCenter + Vector3.right * 0.2f;
+            leftPalm = objectCenter - Vector3.right * 0.2f;
+            rightPalmNormal = (objectCenter - rightPalm).normalized;
+            leftPalmNormal = (objectCenter - leftPalm).normalized;
         }
 #endif
     }
