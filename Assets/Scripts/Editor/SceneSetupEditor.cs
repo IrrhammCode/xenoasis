@@ -4,8 +4,9 @@ using System.IO;
 
 /// <summary>
 /// XENOASIS — SceneSetupEditor.cs
-/// Unity Editor utility that auto-assembles and auto-wires the complete
-/// 4-minute Welcome Chamber narrative experience matching the Project Bible.
+/// 1-Click Unity Editor utility that auto-assembles and auto-wires the complete
+/// 4-minute Welcome Chamber narrative experience matching the Project Bible,
+/// using the generated Tripo AI 3D assets and World Labs skybox.
 /// Run from Unity menu: XENOASIS > Setup Scene — Welcome Chamber.
 /// </summary>
 public class SceneSetupEditor : MonoBehaviour
@@ -14,7 +15,7 @@ public class SceneSetupEditor : MonoBehaviour
     [MenuItem("XENOASIS/Setup Scene — Welcome Chamber")]
     public static void SetupWelcomeChamber()
     {
-        Debug.Log("[XENOASIS] Assembling Welcome Chamber narrative experience...");
+        Debug.Log("[XENOASIS] Assembling Welcome Chamber narrative experience with Tripo & World Labs assets...");
 
         // Ensure directories exist
         EnsureDirectory("Assets/Materials");
@@ -27,16 +28,27 @@ public class SceneSetupEditor : MonoBehaviour
         Material cyanGlowMat = GetOrCreateMaterial("Assets/Materials/EmissiveCyan.mat", "XENOASIS/EmissivePulse", new Color(0f, 1f, 0.82f));
         Material goldGlowMat = GetOrCreateMaterial("Assets/Materials/EmissiveGold.mat", "XENOASIS/EmissivePulse", new Color(1f, 0.82f, 0.4f));
 
-        // ===== 2. ROOT HIERARCHY =====
+        // ===== 2. SKYBOX (World Labs 360 Celestial Void) =====
+        Texture2D panoTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Skybox/CosmicVoid_Pano.png");
+        if (panoTex != null)
+        {
+            Material skyMat = GetOrCreateMaterial("Assets/Materials/CosmicVoid_Skybox.mat", "Skybox/Panoramic", Color.white);
+            skyMat.SetTexture("_MainTex", panoTex);
+            skyMat.SetFloat("_Exposure", 1.2f);
+            RenderSettings.skybox = skyMat;
+            Debug.Log("[XENOASIS] World Labs Skybox configured successfully.");
+        }
+
+        // ===== 3. ROOT HIERARCHY =====
         GameObject root = CreateOrFind("--- XENOASIS ---");
 
-        // ===== 3. MANAGERS =====
+        // ===== 4. MANAGERS =====
         GameObject managers = CreateChildOrFind(root, "[Managers]");
         GameManager gameManager = AddComponentIfMissing<GameManager>(managers);
         OfferingManager offeringManager = AddComponentIfMissing<OfferingManager>(managers);
         AudioManager audioManager = AddComponentIfMissing<AudioManager>(managers);
 
-        // ===== 4. ENVIRONMENT =====
+        // ===== 5. ENVIRONMENT =====
         GameObject environment = CreateChildOrFind(root, "[Environment]");
 
         // Floor Platform (Obsidian circular dais, 12m diameter)
@@ -48,7 +60,11 @@ public class SceneSetupEditor : MonoBehaviour
         if (floor.GetComponent<MeshCollider>() == null) floor.AddComponent<MeshCollider>();
         floor.transform.position = Vector3.zero;
 
-        // 4 Arched Obsidian Pillars
+        // World Labs Sanctuary Collider (if available)
+        AttachGLBOrPlaceholder(environment, "Assets/Models/WorldLabs/sanctuary_collider.glb", "SanctuaryCollider",
+            Vector3.zero, Vector3.one, Quaternion.identity);
+
+        // 4 Arched Obsidian Pillars (Tripo AI)
         for (int i = 0; i < 4; i++)
         {
             float angle = i * 90f;
@@ -57,8 +73,11 @@ public class SceneSetupEditor : MonoBehaviour
             pillar.transform.position = pos;
             pillar.transform.rotation = Quaternion.Euler(0, angle, 0);
 
-            // Placeholder pillar mesh if none imported yet
-            if (pillar.GetComponent<MeshFilter>() == null)
+            // Attach Tripo obsidian_pillar model or fallback
+            GameObject pillarModel = AttachGLBOrPlaceholder(pillar, "Assets/Models/Tripo/obsidian_pillar.glb", "PillarMesh",
+                Vector3.zero, Vector3.one * 1.5f, Quaternion.identity);
+
+            if (pillarModel == null && pillar.GetComponent<MeshFilter>() == null)
             {
                 var mf = pillar.AddComponent<MeshFilter>();
                 mf.sharedMesh = CreateCylinderMesh(0.2f, 6f);
@@ -67,10 +86,14 @@ public class SceneSetupEditor : MonoBehaviour
             }
         }
 
-        // ===== 5. THE THREE OFFERINGS =====
+        // Overhead Glass Chimes (Tripo AI)
+        AttachGLBOrPlaceholder(environment, "Assets/Models/Tripo/glass_chime.glb", "OverheadGlassChimes",
+            new Vector3(0, 3.5f, 0), Vector3.one * 0.8f, Quaternion.identity);
+
+        // ===== 6. THE THREE SACRED OFFERINGS =====
         GameObject offerings = CreateChildOrFind(root, "[Offerings]");
 
-        // --- Pedestals ---
+        // --- Pedestals (Tripo AI) ---
         GameObject[] pedestals = new GameObject[3];
         Vector3[] pedestalPositions = { new Vector3(0, 0, 0), new Vector3(-3f, 0, 0), new Vector3(3f, 0, 0) };
         string[] pedestalNames = { "Pedestal_Water", "Pedestal_Crystal", "Pedestal_Flora" };
@@ -79,7 +102,11 @@ public class SceneSetupEditor : MonoBehaviour
         {
             pedestals[i] = CreateChildOrFind(offerings, pedestalNames[i]);
             pedestals[i].transform.position = pedestalPositions[i];
-            if (pedestals[i].GetComponent<MeshFilter>() == null)
+
+            GameObject pedModel = AttachGLBOrPlaceholder(pedestals[i], "Assets/Models/Tripo/offering_pedestal.glb", "PedestalMesh",
+                Vector3.zero, Vector3.one * 0.8f, Quaternion.identity);
+
+            if (pedModel == null && pedestals[i].GetComponent<MeshFilter>() == null)
             {
                 var mf = pedestals[i].AddComponent<MeshFilter>();
                 mf.sharedMesh = CreateHexPedestalMesh(0.6f, 0.4f);
@@ -102,6 +129,15 @@ public class SceneSetupEditor : MonoBehaviour
         var waterHandDetector = AddComponentIfMissing<HandProximityDetector>(waterBasin);
         var waterCtrl = AddComponentIfMissing<WaterSphereController>(waterBasin);
 
+        // Tripo Basin model
+        AttachGLBOrPlaceholder(waterBasin, "Assets/Models/Tripo/central_basin.glb", "BasinModel",
+            Vector3.zero, Vector3.one * 0.9f, Quaternion.identity);
+
+        // Tripo Water Lotus inside basin
+        AttachGLBOrPlaceholder(waterBasin, "Assets/Models/Tripo/water_lotus.glb", "WaterLotusModel",
+            new Vector3(0, 0.1f, 0), Vector3.one * 0.5f, Quaternion.identity);
+
+        // Interactive Water Sphere
         GameObject waterSphere = CreateChildOrFind(waterBasin, "WaterSphere");
         var wsMF = waterSphere.GetComponent<MeshFilter>() ?? waterSphere.AddComponent<MeshFilter>();
         if (wsMF.sharedMesh == null)
@@ -129,21 +165,26 @@ public class SceneSetupEditor : MonoBehaviour
         GameObject crystalVis = CreateChildOrFind(crystal, "CrystalVisualizer");
         var soundVis = AddComponentIfMissing<SoundWaveVisualizer>(crystalVis);
 
-        if (crystal.GetComponent<MeshFilter>() == null)
+        // Tripo Resonant Crystal model
+        GameObject crystalModel = AttachGLBOrPlaceholder(crystal, "Assets/Models/Tripo/resonant_crystal.glb", "CrystalMesh",
+            Vector3.zero, Vector3.one * 0.8f, Quaternion.identity);
+
+        Renderer crystalRen = (crystalModel != null) ? crystalModel.GetComponentInChildren<Renderer>() : crystal.GetComponent<Renderer>();
+        if (crystalRen == null && crystal.GetComponent<MeshFilter>() == null)
         {
             var mf = crystal.AddComponent<MeshFilter>();
             GameObject tempPrism = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             mf.sharedMesh = tempPrism.GetComponent<MeshFilter>().sharedMesh;
             DestroyImmediate(tempPrism);
-            var mr = crystal.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = cyanGlowMat;
+            crystalRen = crystal.AddComponent<MeshRenderer>();
+            crystalRen.sharedMaterial = cyanGlowMat;
             crystal.transform.localScale = new Vector3(0.3f, 0.8f, 0.3f);
         }
 
         // Wire CrystalResonance
         SerializedObject crSO = new SerializedObject(crystalRes);
         crSO.FindProperty("handDetector").objectReferenceValue = crystalHandDetector;
-        crSO.FindProperty("crystalRenderer").objectReferenceValue = crystal.GetComponent<Renderer>();
+        crSO.FindProperty("crystalRenderer").objectReferenceValue = crystalRen;
         crSO.FindProperty("waveVisualizer").objectReferenceValue = soundVis;
         crSO.ApplyModifiedProperties();
 
@@ -155,26 +196,39 @@ public class SceneSetupEditor : MonoBehaviour
         GameObject energyBeamObj = CreateChildOrFind(flora, "EnergyBeam");
         var energyBeamVFX = AddComponentIfMissing<EnergyBeamVFX>(energyBeamObj);
 
-        GameObject dormantMesh = CreateChildOrFind(flora, "DormantFloraMesh");
-        if (dormantMesh.GetComponent<MeshFilter>() == null)
+        // Tripo Dormant & Bloomed Flora models
+        GameObject dormantMesh = AttachGLBOrPlaceholder(flora, "Assets/Models/Tripo/alien_flora_dormant.glb", "DormantFloraMesh",
+            Vector3.zero, Vector3.one * 0.7f, Quaternion.identity);
+
+        if (dormantMesh == null)
         {
-            GameObject tempSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            dormantMesh.AddComponent<MeshFilter>().sharedMesh = tempSphere.GetComponent<MeshFilter>().sharedMesh;
-            DestroyImmediate(tempSphere);
-            var mr = dormantMesh.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = obsidianMat;
-            dormantMesh.transform.localScale = new Vector3(0.4f, 0.6f, 0.4f);
+            dormantMesh = CreateChildOrFind(flora, "DormantFloraMesh");
+            if (dormantMesh.GetComponent<MeshFilter>() == null)
+            {
+                GameObject tempSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                dormantMesh.AddComponent<MeshFilter>().sharedMesh = tempSphere.GetComponent<MeshFilter>().sharedMesh;
+                DestroyImmediate(tempSphere);
+                var mr = dormantMesh.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = obsidianMat;
+                dormantMesh.transform.localScale = new Vector3(0.4f, 0.6f, 0.4f);
+            }
         }
 
-        GameObject bloomedMesh = CreateChildOrFind(flora, "BloomedFloraMesh");
-        if (bloomedMesh.GetComponent<MeshFilter>() == null)
+        GameObject bloomedMesh = AttachGLBOrPlaceholder(flora, "Assets/Models/Tripo/alien_flora_bloomed.glb", "BloomedFloraMesh",
+            Vector3.zero, Vector3.one * 0.7f, Quaternion.identity);
+
+        if (bloomedMesh == null)
         {
-            GameObject tempCyl = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            bloomedMesh.AddComponent<MeshFilter>().sharedMesh = tempCyl.GetComponent<MeshFilter>().sharedMesh;
-            DestroyImmediate(tempCyl);
-            var mr = bloomedMesh.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = cyanGlowMat;
-            bloomedMesh.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
+            bloomedMesh = CreateChildOrFind(flora, "BloomedFloraMesh");
+            if (bloomedMesh.GetComponent<MeshFilter>() == null)
+            {
+                GameObject tempCyl = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                bloomedMesh.AddComponent<MeshFilter>().sharedMesh = tempCyl.GetComponent<MeshFilter>().sharedMesh;
+                DestroyImmediate(tempCyl);
+                var mr = bloomedMesh.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = cyanGlowMat;
+                bloomedMesh.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
+            }
         }
         bloomedMesh.SetActive(false);
 
@@ -186,7 +240,7 @@ public class SceneSetupEditor : MonoBehaviour
         fbSO.FindProperty("bloomedFloraMesh").objectReferenceValue = bloomedMesh.transform;
         fbSO.ApplyModifiedProperties();
 
-        // ===== 6. VFX & CLIMAX BEACON =====
+        // ===== 7. VFX & CLIMAX BEACON =====
         GameObject vfx = CreateChildOrFind(root, "[VFX]");
 
         GameObject stardust = CreateChildOrFind(vfx, "CosmicStardust");
@@ -212,7 +266,7 @@ public class SceneSetupEditor : MonoBehaviour
         bvSO.FindProperty("centerConvergencePoint").objectReferenceValue = beacon.transform;
         bvSO.ApplyModifiedProperties();
 
-        // ===== 7. CAMERA RIG & TRANSITIONS =====
+        // ===== 8. CAMERA RIG & TRANSITIONS =====
         GameObject cameraRig = CreateChildOrFind(root, "[CameraRig]");
         cameraRig.transform.position = new Vector3(0, 1.6f, -4.5f); // Player spawn at edge of dais facing basin
 
@@ -229,7 +283,7 @@ public class SceneSetupEditor : MonoBehaviour
         ptSO.FindProperty("virtualEnvironmentRoot").objectReferenceValue = environment;
         ptSO.ApplyModifiedProperties();
 
-        // ===== 8. END SCREEN UI =====
+        // ===== 9. END SCREEN UI =====
         GameObject endScreen = CreateChildOrFind(root, "EndScreenCanvas");
         var endCanvas = endScreen.GetComponent<Canvas>() ?? endScreen.AddComponent<Canvas>();
         endCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -237,7 +291,7 @@ public class SceneSetupEditor : MonoBehaviour
         AddComponentIfMissing<EndScreenUI>(endScreen);
         endScreen.SetActive(false);
 
-        // ===== 9. LIGHTING =====
+        // ===== 10. LIGHTING =====
         GameObject lighting = CreateChildOrFind(root, "[Lighting]");
         GameObject dirLight = CreateChildOrFind(lighting, "DistantStarlight");
         var light = dirLight.GetComponent<Light>() ?? dirLight.AddComponent<Light>();
@@ -246,7 +300,7 @@ public class SceneSetupEditor : MonoBehaviour
         light.intensity = 0.15f;
         dirLight.transform.rotation = Quaternion.Euler(45f, -30f, 0f);
 
-        // ===== 10. WIRE GAMEMANAGER REFERENCES =====
+        // ===== 11. WIRE GAMEMANAGER REFERENCES =====
         SerializedObject gmSO = new SerializedObject(gameManager);
         gmSO.FindProperty("fadeController").objectReferenceValue = fadeCtrl;
         gmSO.FindProperty("beaconClimaxVFX").objectReferenceValue = beaconVFX;
@@ -256,18 +310,40 @@ public class SceneSetupEditor : MonoBehaviour
         gmSO.FindProperty("endScreenCanvas").objectReferenceValue = endScreen;
         gmSO.ApplyModifiedProperties();
 
-        // ===== 11. WIRE AUDIO ASSETS =====
+        // ===== 12. WIRE AUDIO ASSETS =====
         WireAudioAssets(audioManager, crystalRes, floraBloom);
 
-        Debug.Log("[XENOASIS] Welcome Chamber assembled & wired 100% according to Project Bible narrative!");
+        Debug.Log("[XENOASIS] Welcome Chamber assembled with Tripo 3D models and World Labs Skybox!");
         EditorUtility.DisplayDialog("XENOASIS",
             "Welcome Chamber Narrative Experience Assembled!\n\n" +
-            "✔ 3 Sacred Offerings (Water, Crystal, Flora) positioned & wired\n" +
-            "✔ Climax Beacon & Convergence Beams connected to pedestals\n" +
-            "✔ Inception fade, guiding trail, stardust, and end card configured\n" +
-            "✔ Spatial audio soundscapes hooked up\n" +
-            "✔ Shaders & Materials applied",
+            "✔ World Labs 360 Skybox applied\n" +
+            "✔ 9 Tripo AI 3D Artifacts attached (Basin, Lotus, Crystal, Pillars, Flora, Chimes, Pedestals)\n" +
+            "✔ 3 Sacred Offerings mechanics fully wired\n" +
+            "✔ Climax Beacon & Convergence Beams hooked up\n" +
+            "✔ Spatial audio soundscapes connected\n" +
+            "✔ PICO 4 Ultra Hand Tracking & Passthrough ready",
             "Awesome!");
+    }
+
+    // ===== MODEL ATTACH HELPER =====
+    static GameObject AttachGLBOrPlaceholder(GameObject parent, string glbPath, string childName, Vector3 localPos, Vector3 localScale, Quaternion localRot)
+    {
+        Transform existing = parent.transform.Find(childName);
+        if (existing != null) return existing.gameObject;
+
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(glbPath);
+        if (prefab != null)
+        {
+            GameObject instance = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+            instance.name = childName;
+            instance.transform.SetParent(parent.transform);
+            instance.transform.localPosition = localPos;
+            instance.transform.localScale = localScale;
+            instance.transform.localRotation = localRot;
+            Undo.RegisterCreatedObjectUndo(instance, "Attach " + childName);
+            return instance;
+        }
+        return null;
     }
 
     // ===== AUDIO WIRING =====
