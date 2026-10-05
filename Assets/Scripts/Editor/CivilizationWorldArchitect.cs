@@ -60,6 +60,8 @@ namespace Xenoasis.EditorTools
             Material glowCyan = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/EmissiveCyan.mat");
             Material glowGold = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/EmissiveGold.mat");
             Material stardustMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Particle_Stardust.mat");
+            Material particleGlowMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Particle_GlowingAdditive.mat") ?? stardustMat;
+            Material particleSmokeMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Particle_SmokeAlpha.mat") ?? stardustMat;
             Material darkHullMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Cockpit_HullDark.mat");
 
             // Audio clips
@@ -235,16 +237,18 @@ namespace Xenoasis.EditorTools
             // =========================================================================
             // 4. PARTICLE SYSTEMS (Embers, Smoke, Hearth Flames, Quantum Sparks)
             // =========================================================================
-            ParticleSystem embersPs = CreateFloatingEmbers(vfxRoot.transform, stardustMat);
-            ParticleSystem smokePs = CreateForgeSmoke(vfxRoot.transform, new Vector3(0f, 1.8f, 5.5f));
-            ParticleSystem hearthFlamesPs = CreateHearthFlames(vfxRoot.transform, new Vector3(0f, 0.8f, 5.5f));
-            ParticleSystem siliconSparksPs = CreateQuantumSparks(vfxRoot.transform, new Vector3(7.2f, 1.6f, 4.5f));
+            ParticleSystem embersPs = CreateFloatingEmbers(vfxRoot.transform, particleGlowMat);
+            ParticleSystem smokePs = CreateForgeSmoke(vfxRoot.transform, new Vector3(0f, 1.8f, 5.5f), particleSmokeMat);
+            ParticleSystem hearthFlamesPs = CreateHearthFlames(vfxRoot.transform, new Vector3(0f, 0.8f, 5.5f), particleGlowMat);
+            ParticleSystem siliconSparksPs = CreateQuantumSparks(vfxRoot.transform, new Vector3(7.2f, 1.6f, 4.5f), particleGlowMat);
 
             // Return Portal Swirling Particles
             GameObject portalPsGo = new GameObject("VFX_ReturnPortal_Embers");
             portalPsGo.transform.SetParent(vfxRoot.transform, false);
             portalPsGo.transform.localPosition = new Vector3(0f, 2.45f, -4.8f);
             var portalPs = portalPsGo.AddComponent<ParticleSystem>();
+            var portalRend = portalPsGo.GetComponent<ParticleSystemRenderer>();
+            if (portalRend != null) portalRend.sharedMaterial = particleGlowMat;
             var portalMain = portalPs.main;
             portalMain.startLifetime = 1.8f;
             portalMain.startSpeed = 0.6f;
@@ -527,13 +531,16 @@ namespace Xenoasis.EditorTools
             return ps;
         }
 
-        private static ParticleSystem CreateForgeSmoke(Transform parent, Vector3 pos)
+        private static ParticleSystem CreateForgeSmoke(Transform parent, Vector3 pos, Material mat)
         {
             GameObject psGo = new GameObject("VFX_ForgeSmoke");
             psGo.transform.SetParent(parent, false);
             psGo.transform.position = pos;
 
             var ps = psGo.AddComponent<ParticleSystem>();
+            var rend = psGo.GetComponent<ParticleSystemRenderer>();
+            if (mat != null && rend != null) rend.sharedMaterial = mat;
+
             var main = ps.main;
             main.startLifetime = 4.0f;
             main.startSpeed = 1.2f;
@@ -552,13 +559,16 @@ namespace Xenoasis.EditorTools
             return ps;
         }
 
-        private static ParticleSystem CreateHearthFlames(Transform parent, Vector3 pos)
+        private static ParticleSystem CreateHearthFlames(Transform parent, Vector3 pos, Material mat)
         {
             GameObject psGo = new GameObject("VFX_HearthFlames");
             psGo.transform.SetParent(parent, false);
             psGo.transform.position = pos;
 
             var ps = psGo.AddComponent<ParticleSystem>();
+            var rend = psGo.GetComponent<ParticleSystemRenderer>();
+            if (mat != null && rend != null) rend.sharedMaterial = mat;
+
             var main = ps.main;
             main.startLifetime = 0.85f;
             main.startSpeed = 1.8f;
@@ -577,13 +587,16 @@ namespace Xenoasis.EditorTools
             return ps;
         }
 
-        private static ParticleSystem CreateQuantumSparks(Transform parent, Vector3 pos)
+        private static ParticleSystem CreateQuantumSparks(Transform parent, Vector3 pos, Material mat)
         {
             GameObject psGo = new GameObject("VFX_QuantumSiliconSparks");
             psGo.transform.SetParent(parent, false);
             psGo.transform.position = pos;
 
             var ps = psGo.AddComponent<ParticleSystem>();
+            var rend = psGo.GetComponent<ParticleSystemRenderer>();
+            if (mat != null && rend != null) rend.sharedMaterial = mat;
+
             var main = ps.main;
             main.startLifetime = 1.2f;
             main.startSpeed = 0.9f;
