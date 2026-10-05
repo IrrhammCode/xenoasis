@@ -60,12 +60,22 @@ namespace Xenoasis.Player
         }
 
         /// <summary>
+        /// Sets the target scene to load on dive completion.
+        /// </summary>
+        public void SetTargetScene(string sceneName)
+        {
+            targetSceneName = sceneName;
+        }
+
+        /// <summary>
         /// Main entry point for diving into the world.
         /// </summary>
         /// <param name="sphereTransform">The transform of the Living Terran Sphere being dived into.</param>
-        public void BeginDiveTransition(Transform sphereTransform)
+        /// <param name="overrideTargetScene">Optional scene name to load instead of default targetSceneName.</param>
+        public void BeginDiveTransition(Transform sphereTransform, string overrideTargetScene = null)
         {
             if (IsTransitioning) return;
+            if (!string.IsNullOrEmpty(overrideTargetScene)) targetSceneName = overrideTargetScene;
             IsTransitioning = true;
             activeSphere = sphereTransform;
             StartCoroutine(DiveCoroutine());

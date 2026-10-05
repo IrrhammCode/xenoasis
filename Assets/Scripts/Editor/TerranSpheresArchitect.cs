@@ -423,18 +423,19 @@ public static class TerranSpheresArchitect
         GameObject divePlinth = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         divePlinth.name = "DIVE_Button_Pedestal";
         divePlinth.transform.SetParent(st.transform, false);
-        divePlinth.transform.localPosition = new Vector3(1.35f, 0.48f, -0.35f);
+        divePlinth.transform.localPosition = new Vector3(-1.35f, 0.48f, 0.95f);
+        divePlinth.transform.localRotation = Quaternion.Euler(0f, -40f, 0f);
         divePlinth.transform.localScale = new Vector3(0.55f, 0.48f, 0.55f);
-        if (obsidianMat != null) divePlinth.GetComponent<MeshRenderer>().sharedMaterial = obsidianMat;
+        if (plinthMat != null) divePlinth.GetComponent<MeshRenderer>().sharedMaterial = plinthMat;
 
-        CreateMeshRing(divePlinth.transform, "DiveButton_GoldRing", 0.28f, 0.035f, goldMat, 0.505f);
-        CreateMeshRing(divePlinth.transform, "DiveButton_CyanRing", 0.25f, 0.025f, glowCyan, 0.51f);
+        CreateMeshRing(divePlinth.transform, "DiveButton_GoldRing", 0.28f, 0.035f, goldMat, 1.01f);
+        CreateMeshRing(divePlinth.transform, "DiveButton_CyanRing", 0.25f, 0.025f, glowCyan, 1.015f);
 
         var diveTouchpad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         diveTouchpad.name = "DiveButton_Touchpad";
         diveTouchpad.transform.SetParent(divePlinth.transform, false);
-        diveTouchpad.transform.localPosition = new Vector3(0f, 0.52f, 0f);
-        diveTouchpad.transform.localScale = new Vector3(0.36f, 0.035f, 0.36f);
+        diveTouchpad.transform.localPosition = new Vector3(0f, 1.03f, 0f);
+        diveTouchpad.transform.localScale = new Vector3(0.70f, 0.04f, 0.70f);
         if (glowCyan != null) diveTouchpad.GetComponent<MeshRenderer>().sharedMaterial = glowCyan;
 
         var diveLight = diveTouchpad.AddComponent<Light>();
@@ -445,15 +446,16 @@ public static class TerranSpheresArchitect
 
         GameObject diveLabel = new GameObject("DiveButton_HoloLabel");
         diveLabel.transform.SetParent(divePlinth.transform, false);
-        diveLabel.transform.localPosition = new Vector3(0f, 0.62f, 0f);
-        diveLabel.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        diveLabel.transform.localPosition = new Vector3(0f, 1.35f, 0f);
+        diveLabel.transform.localRotation = Quaternion.Euler(20f, 180f, 0f);
         var tm = diveLabel.AddComponent<TextMesh>();
-        tm.text = "DIVE INTO WORLD 1\n[TOUCH SPHERE / BUTTON]";
-        tm.fontSize = 24;
-        tm.characterSize = 0.015f;
+        tm.text = "✦ DIVE INTO WORLD 1 ✦\n[TOUCH TO ENTER CRADLE]";
+        tm.fontSize = 28;
+        tm.characterSize = 0.032f;
         tm.anchor = TextAnchor.MiddleCenter;
         tm.alignment = TextAlignment.Center;
         tm.color = new Color(0.2f, 0.95f, 1.0f);
+        tm.fontStyle = FontStyle.Bold;
 
         // Find or add SphereDivingTransition to Main Camera
         Camera mainCam = Camera.main;
@@ -524,6 +526,12 @@ public static class TerranSpheresArchitect
                     title = "III. THE THINKING STONE",
                     eraCode = "INFORMATION AGE // 2026 A.D.",
                     bodyText = "In a poetic planetary loop, humanity returned to common sand.\nPurifying quartz into monocrystalline silicon and carving nanometer gates,\nTerrans taught the melted rock of their cradle planet how to think."
+                },
+                new MuseumTerminalDisplay.TerminalPage
+                {
+                    title = "DIVE PROTOCOL // WORLD 2",
+                    eraCode = "SENSORY 6DoF IMMERSION READY",
+                    bodyText = "Full VR world transition available: The Forge of Civilization.\n\nReach out and grasp the Living Terran Sphere, or press the DIVE PEDESTAL to pull the flame into your consciousness and enter the Prehistoric Mountain Forge."
                 }
             });
         }
@@ -685,6 +693,55 @@ public static class TerranSpheresArchitect
             harvestClip,
             chimeClip
         );
+
+        // 9. Interactive DIVE INTO FORGE Pedestal
+        GameObject divePlinth = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        divePlinth.name = "DIVE_Button_Pedestal";
+        divePlinth.transform.SetParent(st.transform, false);
+        divePlinth.transform.localPosition = new Vector3(-1.35f, 0.48f, 0.95f);
+        divePlinth.transform.localRotation = Quaternion.Euler(0f, -40f, 0f);
+        divePlinth.transform.localScale = new Vector3(0.55f, 0.48f, 0.55f);
+        if (plinthMat != null) divePlinth.GetComponent<MeshRenderer>().sharedMaterial = plinthMat;
+
+        CreateMeshRing(divePlinth.transform, "DiveButton_GoldRing", 0.28f, 0.035f, goldMat, 1.01f);
+        CreateMeshRing(divePlinth.transform, "DiveButton_AmberRing", 0.25f, 0.025f, glowGold, 1.015f);
+
+        var diveTouchpad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        diveTouchpad.name = "DiveButton_Touchpad";
+        diveTouchpad.transform.SetParent(divePlinth.transform, false);
+        diveTouchpad.transform.localPosition = new Vector3(0f, 1.03f, 0f);
+        diveTouchpad.transform.localScale = new Vector3(0.70f, 0.04f, 0.70f);
+        if (glowGold != null) diveTouchpad.GetComponent<MeshRenderer>().sharedMaterial = glowGold;
+
+        var diveLight = diveTouchpad.AddComponent<Light>();
+        diveLight.type = LightType.Point;
+        diveLight.color = new Color(1.0f, 0.65f, 0.15f);
+        diveLight.intensity = 2.4f;
+        diveLight.range = 2.5f;
+
+        GameObject diveLabel = new GameObject("DiveButton_HoloLabel");
+        diveLabel.transform.SetParent(divePlinth.transform, false);
+        diveLabel.transform.localPosition = new Vector3(0f, 1.35f, 0f);
+        diveLabel.transform.localRotation = Quaternion.Euler(20f, 180f, 0f);
+        var tm = diveLabel.AddComponent<TextMesh>();
+        tm.text = "✦ DIVE INTO WORLD 2 ✦\n[TOUCH TO ENTER FORGE]";
+        tm.fontSize = 28;
+        tm.characterSize = 0.032f;
+        tm.anchor = TextAnchor.MiddleCenter;
+        tm.alignment = TextAlignment.Center;
+        tm.color = new Color(1.0f, 0.82f, 0.25f);
+        tm.fontStyle = FontStyle.Bold;
+
+        // Find or add SphereDivingTransition to Main Camera
+        Camera mainCam = Camera.main;
+        SphereDivingTransition divingTrans = null;
+        if (mainCam != null)
+        {
+            divingTrans = mainCam.GetComponent<SphereDivingTransition>();
+            if (divingTrans == null) divingTrans = mainCam.gameObject.AddComponent<SphereDivingTransition>();
+        }
+
+        exhibit.SetupDiveTransition(divingTrans, diveTouchpad);
     }
 
     // =========================================================================
@@ -1367,7 +1424,7 @@ public static class TerranSpheresArchitect
         plaqueRoot.transform.SetParent(station, false);
         // Positioned at the FRONT of the shrine dais facing incoming visitor
         plaqueRoot.transform.localPosition = new Vector3(0f, 0.45f, 1.65f);
-        plaqueRoot.transform.localRotation = Quaternion.Euler(30f, 180f, 0f); // Tilted back towards visitor
+        plaqueRoot.transform.localRotation = Quaternion.Euler(30f, 0f, 0f); // Tilted back towards visitor
 
         // Gold Bevel Outer Frame
         var outerFrame = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -1391,7 +1448,8 @@ public static class TerranSpheresArchitect
         var glowStrip = GameObject.CreatePrimitive(PrimitiveType.Quad);
         glowStrip.name = "Plaque_HoloEmissiveStrip";
         glowStrip.transform.SetParent(plaqueRoot.transform, false);
-        glowStrip.transform.localPosition = new Vector3(0f, 0f, -0.028f);
+        glowStrip.transform.localPosition = new Vector3(0f, 0f, 0.022f);
+        glowStrip.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
         glowStrip.transform.localScale = new Vector3(1.06f, 0.22f, 1f);
         glowStrip.GetComponent<MeshRenderer>().sharedMaterial = glowMat;
         Object.DestroyImmediate(glowStrip.GetComponent<Collider>());
@@ -1399,7 +1457,7 @@ public static class TerranSpheresArchitect
         // 3D TextMesh Title & Subtitle for Authentic Curatorial Display
         GameObject textObj = new GameObject("Plaque_TextMesh");
         textObj.transform.SetParent(plaqueRoot.transform, false);
-        textObj.transform.localPosition = new Vector3(0f, 0.01f, -0.035f);
+        textObj.transform.localPosition = new Vector3(0f, 0.01f, 0.035f);
         textObj.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
         var tm = textObj.AddComponent<TextMesh>();

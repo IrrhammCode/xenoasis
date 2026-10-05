@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using Xenoasis.Player;
 
 /// <summary>
 /// XENOASIS — CivilizationSparkExhibit.cs
@@ -10,6 +11,7 @@ using UnityEngine;
 /// 3. Silicon Metamorphosis: Circuit traces ignite, demonstrating the evolution from fire to computation.
 /// 4. Memory Core Acquisition: The faceted amber Prometheus Silicon Core rises for collection.
 /// 5. 6DoF Immersion: Stepping into DioramaSphere_CivilizationSpark immerses visitor in primeval forge acoustics.
+/// 6. World Dive: Dives player into World 2: The Forge of Civilization.
 /// </summary>
 public class CivilizationSparkExhibit : MuseumExhibitController
 {
@@ -25,6 +27,10 @@ public class CivilizationSparkExhibit : MuseumExhibitController
     [SerializeField] private Transform dioramaSphereTransform;
     [SerializeField] private DioramaImmersionTrigger immersionTrigger;
     [SerializeField] private Light spherePointLight;
+
+    [Header("World Dive Transition")]
+    [SerializeField] private SphereDivingTransition sphereDivingTransition;
+    [SerializeField] private GameObject diveButtonObj;
 
     [Header("Curator Kiosk")]
     [SerializeField] private MuseumTerminalDisplay curatorTerminal;
@@ -142,6 +148,13 @@ public class CivilizationSparkExhibit : MuseumExhibitController
         if (curatorTerminal != null && (hitTarget == curatorTerminal.gameObject || hitTarget.transform.IsChildOf(curatorTerminal.transform)))
         {
             curatorTerminal.AdvancePage();
+            return;
+        }
+
+        // 4. Interacting with the Dive Button / Living Terran Sphere
+        if (diveButtonObj != null && (hitTarget == diveButtonObj || hitTarget.transform.IsChildOf(diveButtonObj.transform)))
+        {
+            TriggerWorldDive();
             return;
         }
 
@@ -308,5 +321,41 @@ public class CivilizationSparkExhibit : MuseumExhibitController
         }
 
         memoryCoreObj.SetActive(false);
+    }
+
+    /// <summary>
+    /// Triggers the sphere diving transition into World 2: The Forge of Civilization.
+    /// The VR hands grab the Living Terran Sphere, lift it to the player's head,
+    /// and the viewport is enveloped by fire/amber refraction before scene transition.
+    /// </summary>
+    public void TriggerWorldDive()
+    {
+        if (sphereDivingTransition == null)
+        {
+            sphereDivingTransition = FindObjectOfType<SphereDivingTransition>();
+        }
+
+        if (sphereDivingTransition != null && dioramaSphereTransform != null)
+        {
+            if (!sphereDivingTransition.IsTransitioning)
+            {
+                Debug.Log("[CivilizationSparkExhibit] ✦ DIVING INTO WORLD 2 — THE FORGE OF CIVILIZATION!");
+                DioramaImmersionTrigger.TriggerPicoHaptics(0.9f, 0.15f);
+                sphereDivingTransition.BeginDiveTransition(dioramaSphereTransform, "World2_ForgeOfCivilization");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[CivilizationSparkExhibit] SphereDivingTransition or Diorama Sphere not assigned!");
+        }
+    }
+
+    /// <summary>
+    /// Wires up the SphereDivingTransition reference and dive button.
+    /// </summary>
+    public void SetupDiveTransition(SphereDivingTransition transition, GameObject diveButton)
+    {
+        this.sphereDivingTransition = transition;
+        this.diveButtonObj = diveButton;
     }
 }

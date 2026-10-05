@@ -118,6 +118,11 @@ namespace Xenoasis.EditorTools
                 meshColliderGo.name = "WorldLabs_Terrain_Collider";
                 meshColliderGo.transform.localPosition = Vector3.zero;
                 meshColliderGo.transform.localScale = Vector3.one * 8.0f;
+
+                foreach (var rend in meshColliderGo.GetComponentsInChildren<Renderer>())
+                {
+                    rend.enabled = false;
+                }
             }
 
             // Basalt Coast Platform (Where player walks)
