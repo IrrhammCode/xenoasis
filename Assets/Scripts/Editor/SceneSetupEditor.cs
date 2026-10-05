@@ -856,9 +856,10 @@ public class SceneSetupEditor : MonoBehaviour
 
         // 1. Instantiate Complete 360° Enclosed Alien UFO Cockpit Hull
         GameObject cockpitPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UFO_CockpitBridge.prefab");
+        GameObject bridgeInstance = null;
         if (cockpitPrefab != null)
         {
-            GameObject bridgeInstance = (GameObject)PrefabUtility.InstantiatePrefab(cockpitPrefab, cockpitBridgeObj.transform);
+            bridgeInstance = (GameObject)PrefabUtility.InstantiatePrefab(cockpitPrefab, cockpitBridgeObj.transform);
             bridgeInstance.name = "UFO_Cockpit_Interior";
             bridgeInstance.transform.localPosition = Vector3.zero;
             bridgeInstance.transform.localRotation = Quaternion.identity;
@@ -870,11 +871,20 @@ public class SceneSetupEditor : MonoBehaviour
             GameObject cockpitModel = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/UFO/UFOCockpit_Interior.obj");
             if (cockpitModel != null)
             {
-                GameObject hullInst = Instantiate(cockpitModel, cockpitBridgeObj.transform);
-                hullInst.name = "UFO_Cockpit_Enclosure";
-                hullInst.transform.localPosition = Vector3.zero;
-                hullInst.transform.localRotation = Quaternion.identity;
-                hullInst.transform.localScale = Vector3.one;
+                bridgeInstance = new GameObject("UFO_Cockpit_Interior");
+                bridgeInstance.transform.SetParent(cockpitBridgeObj.transform, false);
+                GameObject hullInstFallback = Instantiate(cockpitModel, bridgeInstance.transform);
+                hullInstFallback.name = "UFO_Cockpit_Enclosure";
+                hullInstFallback.transform.localPosition = Vector3.zero;
+                hullInstFallback.transform.localRotation = Quaternion.identity;
+                hullInstFallback.transform.localScale = Vector3.one;
+            }
+        }
+
+        if (bridgeInstance != null)
+        {
+            Transform hullTrans = bridgeInstance.transform.Find("UFO_Cockpit_Enclosure") ?? bridgeInstance.transform;
+            GameObject hullInst = hullTrans.gameObject;
 
                 Material cScreenGlass = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Cockpit_ScreenGlass.mat") ?? scifiWallDark;
                 Material leftScreenMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Screen_Left_EarthScan.mat") ?? cScreenGlass;
@@ -957,11 +967,10 @@ public class SceneSetupEditor : MonoBehaviour
                     mmf.sharedMesh = mountsMesh;
                     mmr.sharedMaterials = new Material[] { scifiWallDark, cyanGlowMat };
                 }
-            }
 
-            // Mount Tripo PBR command module at front console
+            // Mount Tripo PBR command module at front console if not already present
             GameObject tripoModule = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/Tripo/ufo_cockpit_module_tripo.glb");
-            if (tripoModule != null)
+            if (tripoModule != null && bridgeInstance.transform.Find("Tripo_PBR_CommandDesk") == null && cockpitBridgeObj.transform.Find("Tripo_PBR_CommandDesk") == null)
             {
                 GameObject tripoChild = Instantiate(tripoModule, cockpitBridgeObj.transform);
                 tripoChild.name = "Tripo_PBR_CommandDesk";
@@ -970,9 +979,9 @@ public class SceneSetupEditor : MonoBehaviour
                 tripoChild.transform.localScale = Vector3.one * 1.35f;
             }
 
-            // Secondary Tripo Sci-Fi Console & Tactical Station in Rear Bridge
+            // Secondary Tripo Sci-Fi Console & Tactical Station in Rear Bridge if not already present
             GameObject tripoInterior = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/Tripo/ufo_cockpit_interior.glb");
-            if (tripoInterior != null)
+            if (tripoInterior != null && bridgeInstance.transform.Find("Tripo_Rear_AvionicsNexus") == null && cockpitBridgeObj.transform.Find("Tripo_Rear_AvionicsNexus") == null)
             {
                 GameObject rearTripo = Instantiate(tripoInterior, cockpitBridgeObj.transform);
                 rearTripo.name = "Tripo_Rear_AvionicsNexus";

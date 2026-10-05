@@ -133,17 +133,87 @@ public class UFOBulderEditor : MonoBehaviour
             if (leftScreenMat != null) { leftScreenMat.SetFloat("_Cull", 0f); leftScreenMat.doubleSidedGI = true; }
             if (rightScreenMat != null) { rightScreenMat.SetFloat("_Cull", 0f); rightScreenMat.doubleSidedGI = true; }
 
+            Mesh cleanDarkMesh = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/Models/UFO/Cockpit_Dark_Clean.asset");
+            Mesh cleanGlowMesh = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/Models/UFO/Cockpit_Glow_Cyan_Clean.asset");
+            Mesh centerHousing = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/Models/UFO/Cockpit_Monitor_Center_Housing.asset");
+            Mesh leftHousing = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/Models/UFO/Cockpit_Monitor_Left_Housing.asset");
+            Mesh rightHousing = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/Models/UFO/Cockpit_Monitor_Right_Housing.asset");
+            Mesh centerMesh = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/Models/UFO/Cockpit_Monitor_Center_Mesh.asset");
+            Mesh leftMesh = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/Models/UFO/Cockpit_Monitor_Left_Mesh.asset");
+            Mesh rightMesh = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/Models/UFO/Cockpit_Monitor_Right_Mesh.asset");
+            Mesh mountsMesh = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/Models/UFO/Cockpit_Monitor_Mounts.asset");
+
+            Material monLeftMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Cockpit_Monitor_Left.mat");
+            Material monCenterMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Cockpit_Monitor_Center.mat");
+            Material monRightMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/Cockpit_Monitor_Right.mat");
+
             foreach (var mr in hullChild.GetComponentsInChildren<MeshRenderer>(true))
             {
                 // OBJ coordinate inversion: Screen_RightPanoramic is physical Left (-1.78m X), Screen_LeftPanoramic is physical Right (+1.78m X)
                 if (mr.name.Contains("Screen_RightPanoramic")) mr.sharedMaterial = leftScreenMat; // Left: Earth Biosphere & Scan
                 else if (mr.name.Contains("Screen_LeftPanoramic")) mr.sharedMaterial = rightScreenMat; // Right: Sol-3 Orbit Dynamics
-                else if (mr.name.Contains("Cockpit_Screen")) mr.sharedMaterial = cockpitScreenGlass;
-                else if (mr.name.Contains("Cockpit_Dark")) mr.sharedMaterial = cockpitHullDark;
+                else if (mr.name.Contains("Cockpit_Screen"))
+                {
+                    mr.gameObject.SetActive(false); // Hide the old dark combined mesh
+                }
+                else if (mr.name.Contains("Cockpit_Dark"))
+                {
+                    mr.sharedMaterial = cockpitHullDark;
+                    if (cleanDarkMesh != null) mr.GetComponent<MeshFilter>().sharedMesh = cleanDarkMesh;
+                }
                 else if (mr.name.Contains("Cockpit_Light")) mr.sharedMaterial = cockpitHullWhite;
                 else if (mr.name.Contains("GlassViewport") || mr.name.Contains("Cockpit_Glass")) mr.sharedMaterial = glassViewportMat;
-                else if (mr.name.Contains("Glow_Cyan")) mr.sharedMaterial = cyanGlowMat;
+                else if (mr.name.Contains("Glow_Cyan"))
+                {
+                    mr.sharedMaterial = cyanGlowMat;
+                    if (cleanGlowMesh != null) mr.GetComponent<MeshFilter>().sharedMesh = cleanGlowMesh;
+                }
                 else if (mr.name.Contains("Glow_Gold")) mr.sharedMaterial = goldGlowMat;
+            }
+
+            // Mount individual telemetry monitors
+            System.Action<string, Mesh, Material, Mesh> mountMon = (mName, sMesh, sMat, hMesh) => {
+                var mObj = hullChild.transform.Find(mName)?.gameObject;
+                if (mObj == null) {
+                    mObj = new GameObject(mName);
+                    mObj.transform.SetParent(hullChild.transform, false);
+                }
+                mObj.transform.localPosition = Vector3.zero;
+                var mf = mObj.GetComponent<MeshFilter>() ?? mObj.AddComponent<MeshFilter>();
+                var mr = mObj.GetComponent<MeshRenderer>() ?? mObj.AddComponent<MeshRenderer>();
+                if (sMesh != null) mf.sharedMesh = sMesh;
+                if (sMat != null) mr.sharedMaterial = sMat;
+
+                if (hMesh != null) {
+                    var hObj = mObj.transform.Find("Housing")?.gameObject;
+                    if (hObj == null) {
+                        hObj = new GameObject("Housing");
+                        hObj.transform.SetParent(mObj.transform, false);
+                    }
+                    hObj.transform.localPosition = Vector3.zero;
+                    var hmf = hObj.GetComponent<MeshFilter>() ?? hObj.AddComponent<MeshFilter>();
+                    var hmr = hObj.GetComponent<MeshRenderer>() ?? hObj.AddComponent<MeshRenderer>();
+                    hmf.sharedMesh = hMesh;
+                    hmr.sharedMaterial = cockpitHullDark;
+                }
+            };
+
+            mountMon("Cockpit_Monitor_Left", leftMesh, monLeftMat, leftHousing);
+            mountMon("Cockpit_Monitor_Center", centerMesh, monCenterMat, centerHousing);
+            mountMon("Cockpit_Monitor_Right", rightMesh, monRightMat, rightHousing);
+
+            if (mountsMesh != null)
+            {
+                var brkObj = hullChild.transform.Find("Monitor_Mounting_Brackets")?.gameObject;
+                if (brkObj == null) {
+                    brkObj = new GameObject("Monitor_Mounting_Brackets");
+                    brkObj.transform.SetParent(hullChild.transform, false);
+                }
+                brkObj.transform.localPosition = Vector3.zero;
+                var bmf = brkObj.GetComponent<MeshFilter>() ?? brkObj.AddComponent<MeshFilter>();
+                var bmr = brkObj.GetComponent<MeshRenderer>() ?? brkObj.AddComponent<MeshRenderer>();
+                bmf.sharedMesh = mountsMesh;
+                bmr.sharedMaterial = cockpitHullDark;
             }
 
             // 2B. Tripo AI High-Poly PBR Command Module (Mounted at front command desk)
