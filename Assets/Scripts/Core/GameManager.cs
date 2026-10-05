@@ -45,6 +45,9 @@ public class GameManager : MonoBehaviour
     [SerializeField] private StardustController stardustController;
     [SerializeField] private PassthroughTransition passthroughTransition;
     [SerializeField] private GameObject endScreenCanvas;
+    [SerializeField] private BiomeTransitionController biomeTransitionController;
+    [SerializeField] private UFOController ufoController;
+    [SerializeField] private UFODescentSequence ufoDescentSequence;
 
     [Header("Events")]
     public UnityEvent OnInceptionStart;
@@ -160,6 +163,14 @@ public class GameManager : MonoBehaviour
         // Trigger climax audio
         if (audioManager != null)
             audioManager.PlayClimaxCrescendo();
+
+        // Trigger biome climax transition (all biomes merge into golden burst)
+        if (biomeTransitionController != null)
+            biomeTransitionController.TriggerClimax();
+
+        // UFO responds to beacon with golden light
+        if (ufoController != null)
+            ufoController.RespondToBeacon();
 
         // Wait for the climax sequence to play out
         yield return new WaitForSeconds(climaxDuration);

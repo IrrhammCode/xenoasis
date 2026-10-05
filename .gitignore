@@ -84,3 +84,10 @@ __pycache__/
 
 # Tools cache
 tools/__pycache__/
+
+# Logs & temp files
+*.log
+.vsconfig
+My project/
+My project (1)/
+/*.png

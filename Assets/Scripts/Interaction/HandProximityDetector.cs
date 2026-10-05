@@ -32,10 +32,10 @@ public class HandProximityDetector : MonoBehaviour
     [SerializeField] private bool showDebugGizmos = true;
 
     [Header("Events")]
-    public UnityEvent<float> OnProximityChanged;   // 0-1 normalized proximity
-    public UnityEvent OnHandEnterRange;             // first frame hand enters radius
-    public UnityEvent OnHandExitRange;              // first frame hand leaves radius
-    public UnityEvent OnHandTouching;               // hand is within touchDistance
+    public UnityEvent<float> OnProximityChanged = new UnityEvent<float>();   // 0-1 normalized proximity
+    public UnityEvent OnHandEnterRange = new UnityEvent();             // first frame hand enters radius
+    public UnityEvent OnHandExitRange = new UnityEvent();              // first frame hand leaves radius
+    public UnityEvent OnHandTouching = new UnityEvent();               // hand is within touchDistance
 
     // Public properties for other scripts to read
     /// <summary>0 = out of range, 1 = touching the object</summary>
@@ -243,51 +243,51 @@ public class HandProximityDetector : MonoBehaviour
         // ===== MOCK HANDS (Unity Editor Testing) =====
         // Enables full narrative testing in Unity Editor via mouse / hotkeys
         bool simulateBoth = Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.LeftShift) || Input.GetMouseButton(0);
-        leftTracked = simulateBoth;
-        rightTracked = true;
 
         if (Camera.main != null)
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            // Project ray onto a sphere or plane centered on this interactive object
             Plane plane = new Plane(-Camera.main.transform.forward, objectCenter);
             if (plane.Raycast(ray, out float enter))
             {
                 Vector3 hitPoint = ray.GetPoint(enter);
-                // Clamp distance to object for easy interaction testing
                 Vector3 offset = hitPoint - objectCenter;
-                if (offset.magnitude > detectionRadius * 1.5f && !simulateBoth)
+                bool mouseOverThis = offset.magnitude <= detectionRadius * 2.2f;
+
+                if (simulateBoth && mouseOverThis)
                 {
-                    rightPalm = hitPoint;
+                    // Touching this object with both hands!
+                    leftTracked = true;
+                    rightTracked = true;
+                    rightPalm = objectCenter + Vector3.forward * (touchDistance * 0.5f);
+                    leftPalm = objectCenter - Vector3.forward * (touchDistance * 0.5f);
+                    rightPalmNormal = -Vector3.forward;
+                    leftPalmNormal = Vector3.forward;
                 }
                 else
                 {
-                    // Snap closer when mouse is near object or clicking
-                    rightPalm = objectCenter + Vector3.ClampMagnitude(offset, detectionRadius * 0.8f);
+                    leftTracked = false;
+                    rightTracked = mouseOverThis;
+                    rightPalm = hitPoint;
+                    rightPalmNormal = offset.sqrMagnitude > 0.001f ? (objectCenter - rightPalm).normalized : Vector3.forward;
+                    leftPalm = Vector3.zero;
+                    leftPalmNormal = Vector3.forward;
                 }
-                rightPalmNormal = (objectCenter - rightPalm).normalized;
             }
             else
             {
-                rightPalm = objectCenter + Vector3.forward * 0.2f;
-                rightPalmNormal = -Vector3.forward;
-            }
-
-            if (leftTracked)
-            {
-                // Mirror left hand on the other side of the object for 2-handed interactions
-                Vector3 diff = rightPalm - objectCenter;
-                leftPalm = objectCenter - diff;
-                leftPalmNormal = (objectCenter - leftPalm).normalized;
-            }
-            else
-            {
+                leftTracked = false;
+                rightTracked = false;
+                rightPalm = objectCenter + Vector3.forward * 5f;
                 leftPalm = Vector3.zero;
+                rightPalmNormal = -Vector3.forward;
                 leftPalmNormal = Vector3.forward;
             }
         }
         else
         {
+            leftTracked = simulateBoth;
+            rightTracked = true;
             rightPalm = objectCenter + Vector3.right * 0.2f;
             leftPalm = objectCenter - Vector3.right * 0.2f;
             rightPalmNormal = (objectCenter - rightPalm).normalized;

@@ -47,19 +47,13 @@ public class PICOBuildSettingsEditor : MonoBehaviour
         // 7. Fullscreen & Orientation
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
 
-        Debug.Log("[XENOASIS] PICO 4 Ultra PlayerSettings successfully configured!");
-
-        EditorUtility.DisplayDialog(
-            "XENOASIS — PICO 4 Ultra Setup",
-            "PICO 4 Ultra Build Settings Configured!\n\n" +
+        Debug.Log("[XENOASIS] PICO 4 Ultra Build Settings Configured!\n" +
             "✔ Target Platform: Android (ARM64)\n" +
             "✔ Scripting Backend: IL2CPP\n" +
             "✔ Min SDK: Android API 29 (Android 10)\n" +
             "✔ Color Space: Linear\n" +
-            "✔ Stereo Rendering: Single Pass Instanced\n\n" +
-            "Next: Ensure 'PICO XR' is checked under Project Settings > XR Plug-in Management.",
-            "Great!"
-        );
+            "✔ Stereo Rendering: Single Pass Instanced\n" +
+            "Next: Ensure 'PICO XR' is checked under Project Settings > XR Plug-in Management.");
     }
 #endif
 }

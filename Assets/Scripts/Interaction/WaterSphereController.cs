@@ -159,11 +159,21 @@ public class WaterSphereController : MonoBehaviour
 
     private void SetVisualState(float proximity)
     {
-        if (sphereRenderer == null) return;
+        if (sphereRenderer == null)
+        {
+            if (waterSphereMesh != null)
+                sphereRenderer = waterSphereMesh.GetComponent<Renderer>();
+            if (sphereRenderer == null) return;
+        }
 
-        // Interpolate emissive color
+        if (propBlock == null)
+            propBlock = new MaterialPropertyBlock();
+
+        // Interpolate emissive/fresnel color
         Color emissiveColor = Color.Lerp(idleColor, activeColor, proximity);
         sphereRenderer.GetPropertyBlock(propBlock);
+        propBlock.SetColor("_FresnelColor", emissiveColor);
+        propBlock.SetFloat("_EmissionIntensity", 1f + proximity * 2f);
         propBlock.SetColor("_EmissionColor", emissiveColor * (1f + proximity * 2f));
         sphereRenderer.SetPropertyBlock(propBlock);
 

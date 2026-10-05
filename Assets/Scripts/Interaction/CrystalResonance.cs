@@ -139,6 +139,8 @@ public class CrystalResonance : MonoBehaviour
     {
         if (crystalRenderer != null)
         {
+            if (propBlock == null)
+                propBlock = new MaterialPropertyBlock();
             crystalRenderer.GetPropertyBlock(propBlock);
             propBlock.SetColor("_EmissionColor", emissiveColor * intensity);
             crystalRenderer.SetPropertyBlock(propBlock);
