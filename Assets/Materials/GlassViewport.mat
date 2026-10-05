@@ -27,18 +27,19 @@ Material:
     m_Ints: []
     m_Floats:
     - _CloudVaporIntensity: 0
-    - _FresnelPower: 4
-    - _GridEmission: 0
-    - _GridLineWidth: 0
+    - _FresnelPower: 3.5
+    - _GridEmission: 0.18
+    - _GridLineWidth: 0.008
     - _GridMode: 0
     - _GridScale: 4
     - _IonizationIntensity: 0
     - _PlasmaIntensity: 0
     m_Colors:
     - _BaseColor: {r: 0.01, g: 0.02, b: 0.04, a: 0.02}
-    - _FresnelColor: {r: 0.2, g: 0.6, b: 0.9, a: 0.25}
+    - _FresnelColor: {r: 0, g: 0.85, b: 1, a: 0.15}
     - _GridColor: {r: 0, g: 1, b: 0.85, a: 0.18}
     - _IonizationColor: {r: 0, g: 0.85, b: 1, a: 1}
     - _PlasmaColor: {r: 1, g: 0.45, b: 0.079999976, a: 1}
     - _PlasmaGlowColor: {r: 1, g: 0.88, b: 0.27999997, a: 1}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1

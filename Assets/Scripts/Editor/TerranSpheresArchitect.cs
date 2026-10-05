@@ -53,7 +53,39 @@ public static class TerranSpheresArchitect
             return;
         }
 
-        // Clean out any previous container
+        // 1. Remove any foreign root objects that don't belong in Welcome Chamber (e.g. World 2 forge)
+        foreach (var root in archiveRoot.scene.GetRootGameObjects())
+        {
+            if (root.name != "--- XENOASIS ---" && root.name != "[CameraRig]")
+            {
+                Debug.Log($"[TerranSpheresArchitect] Removing foreign root from Welcome Chamber: {root.name}");
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        // 2. Clean out legacy clutter objects so ONLY the 4 Living Terran Spheres exist
+        string[] legacyClutter = new string[]
+        {
+            "HumanAmbassadorStation",
+            "AlienBioMirrorStation",
+            "CivilizationHoloTable",
+            "LivingSamplePods",
+            "GlassChimesGroup",
+            "MuseumOfHumanity",
+            "MuseumInformationTerminals",
+            "Landing_Dais_Plinth"
+        };
+        foreach (string clutterName in legacyClutter)
+        {
+            Transform t = archiveRoot.transform.Find(clutterName);
+            if (t != null)
+            {
+                Debug.Log($"[TerranSpheresArchitect] Removing legacy clutter: {clutterName}");
+                Object.DestroyImmediate(t.gameObject);
+            }
+        }
+
+        // 3. Clean out any previous container
         Transform oldSpheres = archiveRoot.transform.Find("TheLivingTerranSpheres");
         if (oldSpheres != null) Object.DestroyImmediate(oldSpheres.gameObject);
 

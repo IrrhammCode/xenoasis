@@ -29,18 +29,13 @@ namespace Xenoasis.EditorTools
                 Directory.CreateDirectory(sceneDir);
             }
 
-            Scene currentScene = EditorSceneManager.GetActiveScene();
             Scene scene;
-            bool wasUntitled = string.IsNullOrEmpty(currentScene.path);
-
-            if (wasUntitled)
+            if (File.Exists(ScenePath))
             {
-                // In batchmode or fresh editor session with untitled scene, just use it
-                scene = currentScene;
+                scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
             }
             else
             {
-                EditorSceneManager.SaveOpenScenes();
                 scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             }
 
