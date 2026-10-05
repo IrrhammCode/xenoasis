@@ -14,5 +14,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/World2_ForgeOfCivilization.unity
     guid: 70ea1f0bac5b483439373e12571fc2db
+  - enabled: 1
+    path: Assets/Scenes/World3_HeartOfHumanity.unity
+    guid: 00000000000000000000000000000000
   m_configObjects:
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: c20a8c8b75cda5c4dbdd7adb70a701dc, type: 2}

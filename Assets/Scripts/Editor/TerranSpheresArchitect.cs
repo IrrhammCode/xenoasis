@@ -813,6 +813,12 @@ public static class TerranSpheresArchitect
                     title = "III. THE MOLECULAR SCRIPT",
                     eraCode = "THE HUMAN GENOME // 2003 A.D.",
                     bodyText = "Using chemical sequencing and digital supercomputing, humanity decoded\nits own 3.2 billion base-pair blueprint. The species crossed a threshold:\nlife on Earth was no longer just read by natural selection—it could read itself."
+                },
+                new MuseumTerminalDisplay.TerminalPage
+                {
+                    title = "DIVE PROTOCOL // WORLD 3",
+                    eraCode = "SENSORY 6DoF IMMERSION READY",
+                    bodyText = "Full VR world transition available: The Heart of Humanity.\n\nReach out and cradle the Living Terran Sphere, or press the DIVE PEDESTAL to pull the biological and cultural archive into your consciousness and enter the Arctic Seed & Language Sanctuary."
                 }
             });
         }
@@ -992,6 +998,55 @@ public static class TerranSpheresArchitect
             harvestClip,
             chimeClip
         );
+
+        // 9. Interactive DIVE INTO SEED & LANGUAGE SANCTUARY Pedestal
+        GameObject divePlinth = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        divePlinth.name = "DIVE_Button_Pedestal";
+        divePlinth.transform.SetParent(st.transform, false);
+        divePlinth.transform.localPosition = new Vector3(-1.35f, 0.48f, 0.95f);
+        divePlinth.transform.localRotation = Quaternion.Euler(0f, -20f, 0f);
+        divePlinth.transform.localScale = new Vector3(0.55f, 0.48f, 0.55f);
+        if (plinthMat != null) divePlinth.GetComponent<MeshRenderer>().sharedMaterial = plinthMat;
+
+        CreateMeshRing(divePlinth.transform, "DiveButton_GoldRing", 0.28f, 0.035f, goldMat, 1.01f);
+        CreateMeshRing(divePlinth.transform, "DiveButton_CyanRing", 0.25f, 0.025f, glowCyan, 1.015f);
+
+        var diveTouchpad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        diveTouchpad.name = "DiveButton_Touchpad";
+        diveTouchpad.transform.SetParent(divePlinth.transform, false);
+        diveTouchpad.transform.localPosition = new Vector3(0f, 1.03f, 0f);
+        diveTouchpad.transform.localScale = new Vector3(0.70f, 0.04f, 0.70f);
+        if (glowCyan != null) diveTouchpad.GetComponent<MeshRenderer>().sharedMaterial = glowCyan;
+
+        var diveLight = diveTouchpad.AddComponent<Light>();
+        diveLight.type = LightType.Point;
+        diveLight.color = new Color(0.25f, 0.95f, 0.85f);
+        diveLight.intensity = 2.4f;
+        diveLight.range = 2.5f;
+
+        GameObject diveLabel = new GameObject("DiveButton_HoloLabel");
+        diveLabel.transform.SetParent(divePlinth.transform, false);
+        diveLabel.transform.localPosition = new Vector3(0f, 1.35f, 0f);
+        diveLabel.transform.localRotation = Quaternion.Euler(20f, 180f, 0f);
+        var tm = diveLabel.AddComponent<TextMesh>();
+        tm.text = "✦ DIVE INTO WORLD 3 ✦\n[TOUCH TO ENTER SANCTUARY]";
+        tm.fontSize = 28;
+        tm.characterSize = 0.032f;
+        tm.anchor = TextAnchor.MiddleCenter;
+        tm.alignment = TextAlignment.Center;
+        tm.color = new Color(0.35f, 0.95f, 0.90f);
+        tm.fontStyle = FontStyle.Bold;
+
+        // Find or add SphereDivingTransition to Main Camera
+        Camera mainCam = Camera.main;
+        SphereDivingTransition divingTrans = null;
+        if (mainCam != null)
+        {
+            divingTrans = mainCam.GetComponent<SphereDivingTransition>();
+            if (divingTrans == null) divingTrans = mainCam.gameObject.AddComponent<SphereDivingTransition>();
+        }
+
+        exhibit.SetupDiveTransition(divingTrans, diveTouchpad);
     }
 
     // =========================================================================

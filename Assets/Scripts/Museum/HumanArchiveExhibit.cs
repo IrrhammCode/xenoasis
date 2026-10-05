@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using Xenoasis.Player;
 
 /// <summary>
 /// XENOASIS — HumanArchiveExhibit.cs
@@ -27,6 +28,10 @@ public class HumanArchiveExhibit : MuseumExhibitController
 
     [Header("Curator Kiosk")]
     [SerializeField] private MuseumTerminalDisplay curatorTerminal;
+
+    [Header("World Dive Transition")]
+    [SerializeField] private SphereDivingTransition sphereDivingTransition;
+    [SerializeField] private GameObject diveButtonObj;
 
     [Header("Audio SFX")]
     [SerializeField] private AudioClip cryoReleaseClip;
@@ -143,6 +148,13 @@ public class HumanArchiveExhibit : MuseumExhibitController
         if (curatorTerminal != null && (hitTarget == curatorTerminal.gameObject || hitTarget.transform.IsChildOf(curatorTerminal.transform)))
         {
             curatorTerminal.AdvancePage();
+            return;
+        }
+
+        // 4. Interacting with the Dive Button / Living Terran Sphere
+        if (diveButtonObj != null && (hitTarget == diveButtonObj || hitTarget.transform.IsChildOf(diveButtonObj.transform)))
+        {
+            TriggerWorldDive();
             return;
         }
 
@@ -302,5 +314,41 @@ public class HumanArchiveExhibit : MuseumExhibitController
         }
 
         memorySeedObj.SetActive(false);
+    }
+
+    /// <summary>
+    /// Triggers the sphere diving transition into World 3: The Heart of Humanity.
+    /// The VR hands cradle the Living Terran Sphere, lift it to the player's head,
+    /// and the viewport is enveloped by glacial cyan refraction before scene transition.
+    /// </summary>
+    public void TriggerWorldDive()
+    {
+        if (sphereDivingTransition == null)
+        {
+            sphereDivingTransition = FindObjectOfType<SphereDivingTransition>();
+        }
+
+        if (sphereDivingTransition != null && dioramaSphereTransform != null)
+        {
+            if (!sphereDivingTransition.IsTransitioning)
+            {
+                Debug.Log("[HumanArchiveExhibit] ✦ DIVING INTO WORLD 3 — THE HEART OF HUMANITY!");
+                DioramaImmersionTrigger.TriggerPicoHaptics(0.9f, 0.15f);
+                sphereDivingTransition.BeginDiveTransition(dioramaSphereTransform, "World3_HeartOfHumanity");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[HumanArchiveExhibit] SphereDivingTransition or Diorama Sphere not assigned!");
+        }
+    }
+
+    /// <summary>
+    /// Wires up the SphereDivingTransition reference and dive button.
+    /// </summary>
+    public void SetupDiveTransition(SphereDivingTransition transition, GameObject diveButton)
+    {
+        this.sphereDivingTransition = transition;
+        this.diveButtonObj = diveButton;
     }
 }
