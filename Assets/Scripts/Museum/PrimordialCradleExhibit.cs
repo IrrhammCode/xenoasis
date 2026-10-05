@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using Xenoasis.Player;
 
 /// <summary>
 /// XENOASIS — PrimordialCradleExhibit.cs
@@ -34,6 +35,10 @@ public class PrimordialCradleExhibit : MuseumExhibitController
     [SerializeField] private AudioClip lotusBloomClip;
     [SerializeField] private AudioClip dropletHarvestClip;
     [SerializeField] private AudioClip chimeTonesClip;
+
+    [Header("World Dive Transition")]
+    [SerializeField] private SphereDivingTransition sphereDivingTransition;
+    [SerializeField] private GameObject diveButtonObj;
 
     [Header("Ritual State")]
     private bool isWaterActivated = false;
@@ -117,6 +122,14 @@ public class PrimordialCradleExhibit : MuseumExhibitController
         if (curatorTerminal != null && (hitTarget == curatorTerminal.gameObject || hitTarget.transform.IsChildOf(curatorTerminal.transform)))
         {
             curatorTerminal.AdvancePage();
+            return;
+        }
+
+        // 4. Interacting with the Dive Button or Diorama Sphere → Enter World 1
+        if ((diveButtonObj != null && (hitTarget == diveButtonObj || hitTarget.transform.IsChildOf(diveButtonObj.transform))) ||
+            (dioramaSphereTransform != null && (hitTarget == dioramaSphereTransform.gameObject || hitTarget.transform.IsChildOf(dioramaSphereTransform))))
+        {
+            TriggerWorldDive();
             return;
         }
 
@@ -298,5 +311,42 @@ public class PrimordialCradleExhibit : MuseumExhibitController
         {
             memoryDropletObj.SetActive(false);
         }
+    }
+
+    /// <summary>
+    /// Triggers the sphere diving transition into World 1: The Primordial Cradle.
+    /// The VR hands grab the Living Terran Sphere, lift it to the player's head,
+    /// and the viewport is enveloped by the sphere's water refraction before scene transition.
+    /// </summary>
+    public void TriggerWorldDive()
+    {
+        if (sphereDivingTransition == null)
+        {
+            sphereDivingTransition = FindObjectOfType<SphereDivingTransition>();
+        }
+
+        if (sphereDivingTransition != null && dioramaSphereTransform != null)
+        {
+            if (!sphereDivingTransition.IsTransitioning)
+            {
+                Debug.Log("[PrimordialCradleExhibit] ✦ DIVING INTO WORLD 1 — THE PRIMORDIAL CRADLE!");
+                DioramaImmersionTrigger.TriggerPicoHaptics(0.9f, 0.15f);
+                sphereDivingTransition.BeginDiveTransition(dioramaSphereTransform);
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[PrimordialCradleExhibit] SphereDivingTransition or Diorama Sphere not assigned!");
+        }
+    }
+
+    /// <summary>
+    /// Wires up the SphereDivingTransition reference for the dive button interaction.
+    /// Called by TerranSpheresArchitect during museum construction.
+    /// </summary>
+    public void SetupDiveTransition(SphereDivingTransition transition, GameObject diveButton)
+    {
+        this.sphereDivingTransition = transition;
+        this.diveButtonObj = diveButton;
     }
 }

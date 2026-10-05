@@ -8,5 +8,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/WelcomeChamber.unity
     guid: 21fc8c828e5ec474eb2a74f4991a376a
+  - enabled: 1
+    path: Assets/Scenes/World1_PrimordialCradle.unity
+    guid: 19b522d4f6b8a9c4a88170c2bb5d590b
   m_configObjects:
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: c20a8c8b75cda5c4dbdd7adb70a701dc, type: 2}

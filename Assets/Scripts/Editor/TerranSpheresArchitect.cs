@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using Xenoasis.Player;
 
 /// <summary>
 /// XENOASIS — TerranSpheresArchitect.cs
@@ -38,6 +39,12 @@ public static class TerranSpheresArchitect
     public static void BuildMuseum()
     {
         Debug.Log("[TerranSpheresArchitect] ✦ Initiating construction of Monumental Living Terran Spheres Museum...");
+
+        string welcomeScenePath = "Assets/Scenes/WelcomeChamber.unity";
+        if (UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene().path != welcomeScenePath)
+        {
+            UnityEditor.SceneManagement.EditorSceneManager.OpenScene(welcomeScenePath, UnityEditor.SceneManagement.OpenSceneMode.Single);
+        }
 
         GameObject archiveRoot = GameObject.Find("--- XENOASIS ---/[Environment]/TerranLivingArchive");
         if (archiveRoot == null)
@@ -87,6 +94,7 @@ public static class TerranSpheresArchitect
 
         EditorUtility.SetDirty(spheresRoot);
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(archiveRoot.scene);
+        UnityEditor.SceneManagement.EditorSceneManager.SaveScene(archiveRoot.scene);
         Debug.Log("[TerranSpheresArchitect] ✦ The Monumental Living Terran Spheres Museum 100% COMPLETE!");
     }
 
@@ -384,10 +392,81 @@ public static class TerranSpheresArchitect
         var immersion = sphere.AddComponent<DioramaImmersionTrigger>();
         immersion.SetupImmersion(ps, sLight, abyssAmbienceClip);
 
-        // 5. Connect Everything to PrimordialCradleExhibit Controller
+        // 5. Configure Station 1 Terminal Pages
+        var termDisplay = st.GetComponentInChildren<MuseumTerminalDisplay>();
+        if (termDisplay != null)
+        {
+            termDisplay.SetCustomPages(new MuseumTerminalDisplay.TerminalPage[]
+            {
+                new MuseumTerminalDisplay.TerminalPage
+                {
+                    title = "I. THE PRIMORDIAL CRADLE",
+                    eraCode = "ARCHEAN EON // 3.8 BILLION B.C.",
+                    bodyText = "Water arrived via cosmic cometary bombardment. In boiling hydrothermal tide pools, early RNA polymers catalyzed the memory of life.\n\nTouch the Sacred Basin to initiate the water bloom ritual."
+                },
+                new MuseumTerminalDisplay.TerminalPage
+                {
+                    title = "THE MEMORY OF WATER",
+                    eraCode = "ASTROBIOLOGY // PHYSIOLOGY",
+                    bodyText = "Every human tear, blood plasma, and cellular fluid maintains the identical electrolyte ratio of Earth's ancient Archean sea.\n\nHumans never left the primordial ocean; they simply evolved membranes to carry the sea within."
+                },
+                new MuseumTerminalDisplay.TerminalPage
+                {
+                    title = "DIVE PROTOCOL // WORLD 1",
+                    eraCode = "SENSORY 6DoF IMMERSION READY",
+                    bodyText = "Full VR world transition available: The Primordial Cradle.\n\nReach out and grasp the Living Terran Sphere, or press the DIVE PEDESTAL to pull the sphere into your consciousness and enter the Archean lagoon."
+                }
+            });
+        }
+
+        // 6. Interactive DIVE INTO WORLD Pedestal
+        GameObject divePlinth = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        divePlinth.name = "DIVE_Button_Pedestal";
+        divePlinth.transform.SetParent(st.transform, false);
+        divePlinth.transform.localPosition = new Vector3(1.35f, 0.48f, -0.35f);
+        divePlinth.transform.localScale = new Vector3(0.55f, 0.48f, 0.55f);
+        if (obsidianMat != null) divePlinth.GetComponent<MeshRenderer>().sharedMaterial = obsidianMat;
+
+        CreateMeshRing(divePlinth.transform, "DiveButton_GoldRing", 0.28f, 0.035f, goldMat, 0.505f);
+        CreateMeshRing(divePlinth.transform, "DiveButton_CyanRing", 0.25f, 0.025f, glowCyan, 0.51f);
+
+        var diveTouchpad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        diveTouchpad.name = "DiveButton_Touchpad";
+        diveTouchpad.transform.SetParent(divePlinth.transform, false);
+        diveTouchpad.transform.localPosition = new Vector3(0f, 0.52f, 0f);
+        diveTouchpad.transform.localScale = new Vector3(0.36f, 0.035f, 0.36f);
+        if (glowCyan != null) diveTouchpad.GetComponent<MeshRenderer>().sharedMaterial = glowCyan;
+
+        var diveLight = diveTouchpad.AddComponent<Light>();
+        diveLight.type = LightType.Point;
+        diveLight.color = new Color(0.1f, 0.9f, 1.0f);
+        diveLight.intensity = 2.2f;
+        diveLight.range = 2.5f;
+
+        GameObject diveLabel = new GameObject("DiveButton_HoloLabel");
+        diveLabel.transform.SetParent(divePlinth.transform, false);
+        diveLabel.transform.localPosition = new Vector3(0f, 0.62f, 0f);
+        diveLabel.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        var tm = diveLabel.AddComponent<TextMesh>();
+        tm.text = "DIVE INTO WORLD 1\n[TOUCH SPHERE / BUTTON]";
+        tm.fontSize = 24;
+        tm.characterSize = 0.015f;
+        tm.anchor = TextAnchor.MiddleCenter;
+        tm.alignment = TextAlignment.Center;
+        tm.color = new Color(0.2f, 0.95f, 1.0f);
+
+        // Find or add SphereDivingTransition to Main Camera
+        Camera mainCam = Camera.main;
+        SphereDivingTransition divingTrans = null;
+        if (mainCam != null)
+        {
+            divingTrans = mainCam.GetComponent<SphereDivingTransition>();
+            if (divingTrans == null) divingTrans = mainCam.gameObject.AddComponent<SphereDivingTransition>();
+        }
+
+        // 7. Connect Everything to PrimordialCradleExhibit Controller
         var exhibit = st.AddComponent<PrimordialCradleExhibit>();
         var relicSpot = st.transform.Find("Pedestal_RelicSpotlight")?.GetComponent<Light>();
-        var termDisplay = st.GetComponentInChildren<MuseumTerminalDisplay>();
 
         exhibit.SetupCradle(
             basin != null ? basin.transform : null,
@@ -404,6 +483,8 @@ public static class TerranSpheresArchitect
             harvestClip,
             chimeClip
         );
+
+        exhibit.SetupDiveTransition(divingTrans, diveTouchpad);
     }
 
     // =========================================================================
